@@ -159,6 +159,7 @@ export default function DashboardPage() {
   // Reusable icon paths
   const dashIcon = <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>;
   const txIcon   = <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>;
+  const firsIcon = <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>;
   const syncIcon = <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>;
   const logoutIcon = <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>;
 
@@ -178,6 +179,9 @@ export default function DashboardPage() {
           </Link>
           <Link href="/transactions" className="w-10 h-10 rounded-xl flex items-center justify-center text-[#6b8f72] hover:text-lime-400 hover:bg-white/5 transition-all" title="Transactions">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{txIcon}</svg>
+          </Link>
+          <Link href="/firs" className="w-10 h-10 rounded-xl flex items-center justify-center text-[#6b8f72] hover:text-lime-400 hover:bg-white/5 transition-all" title="FIRS Filing">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{firsIcon}</svg>
           </Link>
         </nav>
         <button onClick={handleLogout} className="w-10 h-10 rounded-xl flex items-center justify-center text-[#6b8f72] hover:text-red-400 hover:bg-white/5 transition-all mt-auto" title="Sign out">
@@ -519,6 +523,14 @@ export default function DashboardPage() {
               </div>
               <span className="text-[10px] font-medium text-gray-500">{isBankLinked ? 'Sync' : 'Connect'}</span>
             </button>
+
+            {/* FIRS */}
+            <Link href="/firs" className="flex flex-col items-center gap-1 py-1 px-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{firsIcon}</svg>
+              </div>
+              <span className="text-[10px] font-medium text-gray-400">FIRS</span>
+            </Link>
 
             {/* Logout */}
             <button onClick={handleLogout} className="flex flex-col items-center gap-1 py-1 px-3">

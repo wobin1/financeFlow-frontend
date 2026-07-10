@@ -4,7 +4,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { authService, User } from '@/lib/auth';
-import { transactionService, Transaction } from '@/lib/transactions';
+import {
+  transactionService,
+  Transaction,
+  BUSINESS_CATEGORIES,
+  categoryLabel,
+  DEFAULT_VAT_DEDUCTIBLE_CATEGORIES,
+  WHT_RATE_OPTIONS,
+} from '@/lib/transactions';
 
 type FilterTab = 'all' | 'income' | 'expenses' | 'pending';
 type SortKey  = 'date' | 'amount';
@@ -16,6 +23,10 @@ const STATUS_COLORS: Record<string, string> = {
   flagged:   'bg-orange-100 text-orange-600',
 };
 
+const CATEGORY_GROUPS = Array.from(
+  new Set(BUSINESS_CATEGORIES.map((c) => c.group)),
+);
+
 export default function TransactionsPage() {
   const [user, setUser]               = useState<User | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -24,6 +35,14 @@ export default function TransactionsPage() {
   const [search, setSearch]           = useState('');
   const [sortKey, setSortKey]         = useState<SortKey>('date');
   const [sortAsc, setSortAsc]         = useState(false);
+  const [editingTx, setEditingTx]     = useState<Transaction | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [vatDeductible, setVatDeductible] = useState(false);
+  const [whtApplicable, setWhtApplicable] = useState(false);
+  const [whtRate, setWhtRate] = useState(5);
+  const [categorySearch, setCategorySearch] = useState('');
+  const [saving, setSaving]           = useState(false);
+  const [saveError, setSaveError]     = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -61,7 +80,10 @@ export default function TransactionsPage() {
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
-        (t) => t.merchant_name?.toLowerCase().includes(q) || t.category?.toLowerCase().includes(q),
+        (t) =>
+          t.merchant_name?.toLowerCase().includes(q) ||
+          categoryLabel(t.category).toLowerCase().includes(q) ||
+          t.category?.toLowerCase().includes(q),
       );
     }
     list.sort((a, b) => {
@@ -80,14 +102,83 @@ export default function TransactionsPage() {
     pending:  transactions.filter((t) => t.status === 'pending').length,
   }), [transactions]);
 
+  const filteredCategories = useMemo(() => {
+    const q = categorySearch.trim().toLowerCase();
+    if (!q) return BUSINESS_CATEGORIES;
+    return BUSINESS_CATEGORIES.filter(
+      (c) => c.label.toLowerCase().includes(q) || c.group.toLowerCase().includes(q),
+    );
+  }, [categorySearch]);
+
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc((p) => !p);
     else { setSortKey(key); setSortAsc(false); }
   };
 
+  const openCategorize = (tx: Transaction) => {
+    const current =
+      BUSINESS_CATEGORIES.find((c) => c.value === tx.category || c.label === tx.category)?.value
+      ?? '';
+    setEditingTx(tx);
+    setSelectedCategory(current);
+    setVatDeductible(
+      tx.vat_deductible ?? (current ? DEFAULT_VAT_DEDUCTIBLE_CATEGORIES.has(current) : false),
+    );
+    setWhtApplicable(tx.wht_applicable ?? false);
+    setWhtRate(tx.wht_rate ?? 5);
+    setCategorySearch('');
+    setSaveError(null);
+  };
+
+  const closeCategorize = () => {
+    if (saving) return;
+    setEditingTx(null);
+    setSelectedCategory('');
+    setCategorySearch('');
+    setSaveError(null);
+  };
+
+  const selectCategory = (value: string) => {
+    setSelectedCategory(value);
+    // Auto-suggest VAT deductible for typical purchase categories (user can override)
+    if (editingTx?.vat_deductible == null) {
+      setVatDeductible(DEFAULT_VAT_DEDUCTIBLE_CATEGORIES.has(value));
+    }
+    if (value === 'withholding_tax') {
+      setWhtApplicable(false);
+    }
+  };
+
+  const saveCategory = async () => {
+    if (!editingTx || !selectedCategory) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const updated = await transactionService.updateTransaction(editingTx.id, {
+        status: 'confirmed',
+        category: selectedCategory,
+        vat_deductible: vatDeductible,
+        wht_applicable: whtApplicable,
+        wht_rate: whtApplicable ? whtRate : null,
+      });
+      setTransactions((prev) =>
+        prev.map((t) => (t.id === editingTx.id ? { ...t, ...updated } : t)),
+      );
+      setEditingTx(null);
+      setSelectedCategory('');
+      setCategorySearch('');
+    } catch (e) {
+      console.error('Failed to update category:', e);
+      setSaveError('Could not save category. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // ── shared icon paths ──────────────────────────────────────────────────
   const dashIcon   = <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>;
   const txIcon     = <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>;
+  const firsIcon   = <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>;
   const logoutIcon = <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>;
   const upDown     = (key: SortKey) => sortKey === key ? (sortAsc ? '↑' : '↓') : '↕';
 
@@ -126,6 +217,9 @@ export default function TransactionsPage() {
           <Link href="/transactions" className="w-10 h-10 rounded-xl bg-lime-400 flex items-center justify-center" title="Transactions">
             <svg className="w-5 h-5 text-[#162518]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{txIcon}</svg>
           </Link>
+          <Link href="/firs" className="w-10 h-10 rounded-xl flex items-center justify-center text-[#6b8f72] hover:text-lime-400 hover:bg-white/5 transition-all" title="FIRS Filing">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{firsIcon}</svg>
+          </Link>
         </nav>
         <button onClick={() => authService.logout()} className="w-10 h-10 rounded-xl flex items-center justify-center text-[#6b8f72] hover:text-red-400 hover:bg-white/5 transition-all mt-auto" title="Sign out">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{logoutIcon}</svg>
@@ -146,7 +240,7 @@ export default function TransactionsPage() {
               </div>
               <div>
                 <h1 className="text-base sm:text-lg font-bold text-gray-900">Transactions</h1>
-                <p className="text-xs text-gray-400 hidden sm:block">Full history of your financial activity</p>
+                <p className="text-xs text-gray-400 hidden sm:block">Tap a transaction to categorize it</p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -232,7 +326,7 @@ export default function TransactionsPage() {
             </div>
 
             {/* Column headers — desktop */}
-            <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1fr] px-5 py-2.5 border-b border-gray-50 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+            <div className="hidden sm:grid grid-cols-[2fr_1fr_1.2fr_1fr_0.8fr_0.6fr] px-5 py-2.5 border-b border-gray-50 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
               <span>Merchant</span>
               <button onClick={() => toggleSort('date')} className="text-left hover:text-gray-600 transition-colors flex items-center gap-1">
                 Date <span className="font-mono">{upDown('date')}</span>
@@ -242,6 +336,7 @@ export default function TransactionsPage() {
                 Amount <span className="font-mono">{upDown('amount')}</span>
               </button>
               <span className="text-right">Status</span>
+              <span className="text-right">Edit</span>
             </div>
 
             {/* Rows */}
@@ -262,11 +357,13 @@ export default function TransactionsPage() {
             ) : (
               <div className="divide-y divide-gray-50 overflow-y-auto">
                 {filtered.map((tx) => (
-                  <div
+                  <button
                     key={tx.id}
-                    className="grid grid-cols-[auto_1fr] sm:grid-cols-[2fr_1fr_1fr_1fr_1fr] items-center gap-3 sm:gap-0 px-4 sm:px-5 py-3.5 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                    type="button"
+                    onClick={() => openCategorize(tx)}
+                    className="w-full text-left grid grid-cols-[auto_1fr] sm:grid-cols-[2fr_1fr_1.2fr_1fr_0.8fr_0.6fr] items-center gap-3 sm:gap-0 px-4 sm:px-5 py-3.5 hover:bg-gray-50 active:bg-gray-100 transition-colors"
                   >
-                    {/* Mobile layout: icon + details row */}
+                    {/* Mobile layout */}
                     <div className={`sm:hidden w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${tx.amount > 0 ? 'bg-lime-100' : 'bg-red-50'}`}>
                       <svg className={`w-4 h-4 ${tx.amount > 0 ? 'text-lime-600' : 'text-red-400'}`} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                         {tx.amount > 0
@@ -277,7 +374,7 @@ export default function TransactionsPage() {
                     <div className="sm:hidden flex justify-between items-start min-w-0">
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate leading-tight">{tx.merchant_name}</p>
-                        <p className="text-xs text-gray-400 truncate">{tx.category ?? 'Uncategorized'} · {formatDate(tx.transaction_date)}</p>
+                        <p className="text-xs text-gray-400 truncate">{categoryLabel(tx.category)} · {formatDate(tx.transaction_date)}</p>
                       </div>
                       <div className="text-right ml-3 shrink-0">
                         <p className={`text-sm font-bold ${tx.amount > 0 ? 'text-lime-600' : 'text-red-500'}`}>
@@ -302,14 +399,27 @@ export default function TransactionsPage() {
                       </div>
                     </div>
                     <p className="hidden sm:block text-xs text-gray-500">{formatDate(tx.transaction_date)}</p>
-                    <p className="hidden sm:block text-xs text-gray-500 truncate">{tx.category ?? <span className="text-gray-300 italic">Uncategorized</span>}</p>
+                    <p className={`hidden sm:block text-xs truncate ${tx.category ? 'text-gray-700 font-medium' : 'text-gray-300 italic'}`}>
+                      {categoryLabel(tx.category)}
+                      {(tx.vat_deductible || tx.wht_applicable) && (
+                        <span className="ml-1 text-[10px] text-gray-400 font-normal">
+                          {tx.vat_deductible ? '· VAT' : ''}
+                          {tx.wht_applicable ? ' · WHT' : ''}
+                        </span>
+                      )}
+                    </p>
                     <p className={`hidden sm:block text-sm font-bold text-right ${tx.amount > 0 ? 'text-lime-600' : 'text-red-500'}`}>
                       {tx.amount > 0 ? '+' : ''}{formatCurrency(tx.amount)}
                     </p>
                     <div className="hidden sm:flex justify-end">
                       <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold ${STATUS_COLORS[tx.status] ?? 'bg-gray-100 text-gray-500'}`}>{tx.status}</span>
                     </div>
-                  </div>
+                    <div className="hidden sm:flex justify-end">
+                      <span className="text-[10px] font-semibold text-[#1B3A2D] px-2.5 py-1 rounded-lg bg-lime-50 border border-lime-200">
+                        Categorize
+                      </span>
+                    </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -338,6 +448,12 @@ export default function TransactionsPage() {
               </div>
               <span className="text-[10px] font-semibold text-lime-600">Transactions</span>
             </Link>
+            <Link href="/firs" className="flex flex-col items-center gap-1 py-1 px-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{firsIcon}</svg>
+              </div>
+              <span className="text-[10px] font-medium text-gray-400">FIRS</span>
+            </Link>
             <button onClick={() => authService.logout()} className="flex flex-col items-center gap-1 py-1 px-3">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{logoutIcon}</svg>
@@ -347,6 +463,164 @@ export default function TransactionsPage() {
           </div>
         </nav>
       </div>
+
+      {/* Categorize modal */}
+      {editingTx && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) closeCategorize(); }}
+        >
+          <div className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3 shrink-0">
+              <div className="min-w-0">
+                <h2 className="text-base font-bold text-gray-900">Categorize transaction</h2>
+                <p className="text-xs text-gray-500 mt-1 truncate">{editingTx.merchant_name}</p>
+                <p className={`text-sm font-bold mt-1 ${editingTx.amount > 0 ? 'text-lime-600' : 'text-red-500'}`}>
+                  {editingTx.amount > 0 ? '+' : ''}{formatCurrency(editingTx.amount)}
+                  <span className="text-gray-400 font-normal ml-2">{formatDate(editingTx.transaction_date)}</span>
+                </p>
+              </div>
+              <button
+                onClick={closeCategorize}
+                disabled={saving}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:bg-gray-100 shrink-0"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="px-5 py-3 border-b border-gray-50 shrink-0">
+              <input
+                type="text"
+                value={categorySearch}
+                onChange={(e) => setCategorySearch(e.target.value)}
+                placeholder="Search categories…"
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-[#f7f8f5] text-sm focus:outline-none focus:ring-2 focus:ring-lime-400 focus:border-transparent"
+              />
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-3 py-3">
+              {CATEGORY_GROUPS.map((group) => {
+                const items = filteredCategories.filter((c) => c.group === group);
+                if (items.length === 0) return null;
+                return (
+                  <div key={group} className="mb-4">
+                    <p className="px-2 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                      {group}
+                    </p>
+                    <div className="flex flex-col gap-1">
+                      {items.map((cat) => {
+                        const active = selectedCategory === cat.value;
+                        return (
+                          <button
+                            key={cat.value}
+                            type="button"
+                            onClick={() => selectCategory(cat.value)}
+                            className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all flex items-center justify-between gap-2 ${
+                              active
+                                ? 'bg-[#1B3A2D] text-white'
+                                : 'hover:bg-gray-50 text-gray-800'
+                            }`}
+                          >
+                            <span className="font-medium">{cat.label}</span>
+                            {active && (
+                              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                              </svg>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              {filteredCategories.length === 0 && (
+                <p className="text-center text-sm text-gray-400 py-8">No matching categories</p>
+              )}
+            </div>
+
+            <div className="px-5 py-4 border-t border-gray-100 shrink-0 space-y-3">
+              {editingTx && editingTx.amount < 0 && (
+                <div className="space-y-2.5">
+                  <label className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-[#f7f8f5] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={vatDeductible}
+                      onChange={(e) => setVatDeductible(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#1B3A2D] focus:ring-lime-400"
+                    />
+                    <span>
+                      <span className="text-sm font-semibold text-gray-900 block">VAT deductible</span>
+                      <span className="text-[11px] text-gray-500 leading-snug">
+                        Claim input VAT (7.5%) on this purchase for FIRS VAT return
+                      </span>
+                    </span>
+                  </label>
+
+                  <label className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-[#f7f8f5] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={whtApplicable}
+                      onChange={(e) => setWhtApplicable(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#1B3A2D] focus:ring-lime-400"
+                    />
+                    <span className="flex-1 min-w-0">
+                      <span className="text-sm font-semibold text-gray-900 block">WHT applicable</span>
+                      <span className="text-[11px] text-gray-500 leading-snug">
+                        This payment is subject to withholding tax
+                      </span>
+                      {whtApplicable && (
+                        <select
+                          value={whtRate}
+                          onChange={(e) => setWhtRate(Number(e.target.value))}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"
+                        >
+                          {WHT_RATE_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              WHT rate {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              {saveError && (
+                <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                  {saveError}
+                </p>
+              )}
+              <p className="text-[11px] text-gray-400">
+                Saving will set status to <strong className="text-gray-600">confirmed</strong> for FIRS prep.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={closeCategorize}
+                  disabled={saving}
+                  className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveCategory}
+                  disabled={saving || !selectedCategory}
+                  className="flex-1 py-3 rounded-xl bg-[#1B3A2D] text-white text-sm font-bold hover:bg-[#243f2f] disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {saving ? 'Saving…' : 'Save category'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
