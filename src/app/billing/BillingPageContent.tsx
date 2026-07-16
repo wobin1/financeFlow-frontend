@@ -49,13 +49,14 @@ export default function BillingPageContent() {
   useEffect(() => {
     const reference = searchParams.get('reference') || searchParams.get('trxref');
     const status = searchParams.get('status');
-    if (!reference) {
-      if (status === 'success') {
-        setMessage('Payment received — refreshing your plan…');
-        load();
-      }
+
+    // Legacy Paystack callback: /billing?status=success → dedicated success page
+    if (!reference && status === 'success') {
+      router.replace('/billing/success');
       return;
     }
+
+    if (!reference) return;
 
     let cancelled = false;
     (async () => {
@@ -63,9 +64,7 @@ export default function BillingPageContent() {
         setMessage('Confirming payment…');
         await billingService.verify(reference);
         if (!cancelled) {
-          setMessage('Plan upgraded successfully.');
-          await load();
-          router.replace('/billing');
+          router.replace('/billing/success?reference=' + encodeURIComponent(reference));
         }
       } catch (err: unknown) {
         console.error(err);
@@ -78,14 +77,14 @@ export default function BillingPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [searchParams, load, router]);
+  }, [searchParams, router]);
 
   const handleCheckout = async (planId: string) => {
     setError(null);
     setMessage(null);
     setActionPlan(planId);
     try {
-      const callback = `${window.location.origin}/billing?status=success`;
+      const callback = `${window.location.origin}/billing/success`;
       const result = await billingService.checkout(planId, callback);
       window.location.href = result.authorization_url;
     } catch (err: unknown) {
