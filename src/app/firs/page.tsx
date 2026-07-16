@@ -11,7 +11,18 @@ import {
   FirsWorksheet,
   FirsField,
 } from '@/lib/firs';
-import Sidebar, { sidebarContentOffsetClass } from '@/components/Sidebar';
+import {
+  AppPage,
+  AppHeader,
+  AppMain,
+  AppPanel,
+  AppLabel,
+  CurrencyBadge,
+  AppLoading,
+  fieldClassName,
+} from '@/components/app/PageChrome';
+import { Select } from '@/components/ui/Select';
+import { cn } from '@/lib/utils';
 
 type TabKey = 'vat' | 'wht' | 'cit';
 
@@ -36,7 +47,7 @@ function CopyButton({ value }: { value: string | number }) {
   return (
     <button
       onClick={handleCopy}
-      className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-lime-300 hover:text-lime-700 transition-all"
+      className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold border border-[#e4e7e0] text-[#6b8f72] hover:bg-[#f7f8f5] hover:border-[#162518] hover:text-[#162518] transition-all"
     >
       {copied ? 'Copied!' : 'Copy'}
     </button>
@@ -47,38 +58,38 @@ function WorksheetSection({ worksheet }: { worksheet: FirsWorksheet }) {
   return (
     <div className="flex flex-col gap-4">
       {worksheet.rate && (
-        <p className="text-xs text-gray-500">
-          Rate: <span className="font-semibold text-gray-700">{worksheet.rate}</span>
+        <p className="text-xs text-[#6b8f72]">
+          Rate: <span className="font-semibold text-[#162518]">{worksheet.rate}</span>
         </p>
       )}
 
       <div className="flex flex-col gap-3">
         {worksheet.fields.map((field: FirsField) => (
-          <div
+          <AppPanel
             key={field.key}
-            className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row sm:items-center gap-3"
+            className="flex flex-col sm:flex-row sm:items-center gap-3 !p-4"
           >
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900">{field.label}</p>
+              <p className="text-sm font-semibold text-[#162518]">{field.label}</p>
               {field.portal_hint && (
-                <p className="text-xs text-gray-400 mt-0.5">{field.portal_hint}</p>
+                <p className="text-xs text-[#9aab9e] mt-0.5">{field.portal_hint}</p>
               )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="text-lg font-bold text-[#1B3A2D] tabular-nums">
+              <span className="text-lg font-bold text-[#162518] tabular-nums">
                 {typeof field.value === 'number'
                   ? field.value.toLocaleString('en-NG', { minimumFractionDigits: 2 })
                   : field.value}
               </span>
               <CopyButton value={field.value} />
             </div>
-          </div>
+          </AppPanel>
         ))}
       </div>
 
       {worksheet.notes?.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-          <p className="text-xs font-semibold text-amber-800 uppercase tracking-widest mb-2">Notes</p>
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+          <p className="text-[11px] font-semibold text-amber-800 uppercase tracking-[0.06em] mb-2">Notes</p>
           <ul className="text-xs text-amber-800 space-y-1.5 list-disc list-inside">
             {worksheet.notes.map((note) => (
               <li key={note}>{note}</li>
@@ -169,46 +180,28 @@ export default function FirsPage() {
   const checklistTotal = prep?.readiness.checklist.length ?? 0;
 
   if (loading && !prep) {
-    return (
-      <div className="min-h-screen bg-[#f0f2ee] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-lime-400 border-t-transparent rounded-full animate-spin mx-auto"/>
-          <p className="mt-4 text-gray-500 text-sm">Preparing FIRS filing data…</p>
-        </div>
-      </div>
-    );
+    return <AppLoading label="Preparing FIRS filing data…" />;
   }
 
   return (
-    <div className="flex min-h-screen bg-[#f0f2ee] font-sans">
+    <AppPage active="firs">
+      <AppHeader
+        title="FIRS Filing Prep"
+        subtitle="Copy-ready figures for TaxPro-Max portal"
+        actions={
+          <>
+            <button
+              onClick={() => firsService.downloadCsv(year, month)}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#e4e7e0] text-xs font-semibold text-[#6b8f72] hover:border-[#162518] hover:text-[#162518] transition-all"
+            >
+              Export CSV
+            </button>
+            <CurrencyBadge currency={user?.currency} />
+          </>
+        }
+      />
 
-      <Sidebar active="firs" />
-
-      <div className={`flex-1 flex flex-col min-w-0 ${sidebarContentOffsetClass}`}>
-
-        {/* Header */}
-        <header className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
-          <div className="px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="text-base sm:text-lg font-bold text-gray-900">FIRS Filing Prep</h1>
-              <p className="text-xs text-gray-400 hidden sm:block">Copy-ready figures for TaxPro-Max portal</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => firsService.downloadCsv(year, month)}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-all"
-              >
-                Export CSV
-              </button>
-              <div className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-[#162518] text-white text-xs font-semibold">
-                <span className="w-1.5 h-1.5 rounded-full bg-lime-400 shrink-0"/>
-                {user?.currency ?? 'NGN'}
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 lg:pb-6 flex flex-col gap-5">
+      <AppMain className="flex flex-col gap-5">
 
           {upgradeRequired && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -220,7 +213,7 @@ export default function FirsPage() {
               </div>
               <Link
                 href="/billing"
-                className="shrink-0 inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-[#1B3A2D] text-white text-sm font-semibold hover:bg-[#243f2f]"
+                className="shrink-0 inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-[#162518] text-white text-sm font-semibold hover:bg-[#243f2f]"
               >
                 View plans
               </Link>
@@ -228,118 +221,132 @@ export default function FirsPage() {
           )}
 
           {/* Period selector */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 flex flex-col sm:flex-row sm:items-end gap-4">
-            <div className="flex-1">
-              <label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Filing period</label>
-              <div className="flex gap-2 mt-1.5">
-                <select
+          <AppPanel className="flex flex-col sm:flex-row sm:items-end gap-4">
+            <div className="flex-1 min-w-0">
+              <AppLabel>Filing period</AppLabel>
+              <div className="grid grid-cols-[1fr_7.5rem] gap-2.5 mt-2">
+                <Select
+                  aria-label="Filing month"
                   value={month}
                   onChange={(e) => setMonth(Number(e.target.value))}
-                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm bg-white text-gray-900"
                 >
                   {MONTHS.map((m, i) => (
-                    <option key={m} value={i + 1}>{m}</option>
+                    <option key={m} value={i + 1}>
+                      {m}
+                    </option>
                   ))}
-                </select>
-                <select
+                </Select>
+                <Select
+                  aria-label="Filing year"
                   value={year}
                   onChange={(e) => setYear(Number(e.target.value))}
-                  className="w-28 px-3 py-2 rounded-xl border border-gray-200 text-sm bg-white text-gray-900"
                 >
-                  {[now.getFullYear(), now.getFullYear() - 1, now.getFullYear() - 2].map((y) => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
+                  {[now.getFullYear(), now.getFullYear() - 1, now.getFullYear() - 2].map(
+                    (y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ),
+                  )}
+                </Select>
               </div>
             </div>
             {prep && (
-              <div className="text-right">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Period</p>
-                <p className="text-sm font-bold text-gray-900 mt-1">{prep.period.label}</p>
-                <p className="text-xs text-gray-400">{prep.readiness.transaction_count} transactions</p>
+              <div className="sm:text-right shrink-0 sm:pl-2 sm:border-l sm:border-[#eef1ea]">
+                <AppLabel>Period</AppLabel>
+                <p className="text-sm font-bold text-[#162518] mt-1">{prep.period.label}</p>
+                <p className="text-xs text-[#9aab9e]">
+                  {prep.readiness.transaction_count} transactions
+                </p>
               </div>
             )}
-          </div>
+          </AppPanel>
 
           {/* Taxpayer profile */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5">
+          <AppPanel>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold text-gray-900">Taxpayer details</h2>
-              <span className="text-xs text-gray-400">Used on FIRS portal</span>
+              <h2 className="text-sm font-bold text-[#162518]">Taxpayer details</h2>
+              <span className="text-xs text-[#9aab9e]">Used on FIRS portal</span>
             </div>
             <div className="grid sm:grid-cols-3 gap-3">
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Business name</label>
+                <AppLabel>Business name</AppLabel>
                 <input
                   value={profileForm.business_name}
                   onChange={(e) => setProfileForm((p) => ({ ...p, business_name: e.target.value }))}
                   placeholder="Registered business name"
-                  className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder-gray-400"
+                  className={cn(fieldClassName, 'mt-1.5')}
                 />
               </div>
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">TIN</label>
+                <AppLabel>TIN</AppLabel>
                 <input
                   value={profileForm.tin_number}
                   onChange={(e) => setProfileForm((p) => ({ ...p, tin_number: e.target.value }))}
                   placeholder="Tax Identification Number"
-                  className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder-gray-400"
+                  className={cn(fieldClassName, 'mt-1.5')}
                 />
               </div>
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">CAC number</label>
+                <AppLabel>CAC number</AppLabel>
                 <input
                   value={profileForm.cac_number}
                   onChange={(e) => setProfileForm((p) => ({ ...p, cac_number: e.target.value }))}
                   placeholder="RC / BN number"
-                  className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder-gray-400"
+                  className={cn(fieldClassName, 'mt-1.5')}
                 />
               </div>
             </div>
             <button
               onClick={handleSaveProfile}
               disabled={savingProfile}
-              className="mt-3 px-4 py-2 rounded-xl bg-[#1B3A2D] text-white text-xs font-bold hover:bg-[#243f2f] disabled:opacity-60 transition-all"
+              className="mt-4 px-4 py-2 rounded-xl bg-[#162518] text-white text-xs font-bold hover:bg-[#243f2f] disabled:opacity-60 transition-all"
             >
               {savingProfile ? 'Saving…' : 'Save taxpayer details'}
             </button>
-          </div>
+          </AppPanel>
 
           {/* Checklist */}
           {prep && (
-            <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5">
+            <AppPanel>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-bold text-gray-900">Pre-filing checklist</h2>
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${checklistDone === checklistTotal ? 'bg-lime-100 text-lime-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                <h2 className="text-sm font-bold text-[#162518]">Pre-filing checklist</h2>
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${checklistDone === checklistTotal ? 'bg-lime-100 text-lime-700' : 'bg-amber-100 text-amber-700'}`}>
                   {checklistDone}/{checklistTotal} complete
                 </span>
               </div>
               <div className="grid sm:grid-cols-2 gap-2">
                 {prep.readiness.checklist.map((item) => (
-                  <div key={item.id} className={`flex items-start gap-2.5 p-3 rounded-xl border ${item.done ? 'bg-lime-50 border-lime-200' : 'bg-gray-50 border-gray-200'}`}>
-                    <span className={`mt-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${item.done ? 'bg-lime-500 text-white' : 'bg-gray-300 text-white'}`}>
-                      {item.done ? '✓' : '!'}
+                  <div key={item.id} className={`flex items-start gap-2.5 p-3 rounded-xl border ${item.done ? 'bg-lime-50 border-lime-200' : 'bg-[#f7f8f5] border-[#e4e7e0]'}`}>
+                    <span className={`mt-0.5 w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${item.done ? 'bg-lime-500 text-white' : 'bg-[#d8ddd2] text-[#6b8f72]'}`}>
+                      {item.done ? (
+                        <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                        </svg>
+                      ) : (
+                        <span className="text-[9px] font-bold">!</span>
+                      )}
                     </span>
                     <div>
-                      <p className="text-xs font-semibold text-gray-900">{item.label}</p>
-                      {!item.done && <p className="text-[10px] text-gray-500 mt-0.5">{item.action}</p>}
+                      <p className="text-xs font-semibold text-[#162518]">{item.label}</p>
+                      {!item.done && <p className="text-[10px] text-[#6b8f72] mt-0.5">{item.action}</p>}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </AppPanel>
           )}
 
           {/* Worksheet tabs */}
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="flex gap-1 p-1 bg-[#eef1ea] rounded-xl overflow-x-auto scrollbar-none">
             {(['vat', 'wht', 'cit'] as TabKey[]).map((key) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-all ${
+                className={`shrink-0 flex-1 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${
                   tab === key
-                    ? 'bg-[#1B3A2D] text-white'
-                    : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
+                    ? 'bg-[#162518] text-lime-400'
+                    : 'text-[#6b8f72] hover:text-[#162518]'
                 }`}
               >
                 {key === 'vat' ? 'VAT Return' : key === 'wht' ? 'WHT Schedule' : 'CIT Prep'}
@@ -349,43 +356,42 @@ export default function FirsPage() {
 
           {activeWorksheet && (
             <div>
-              <h2 className="text-base font-bold text-gray-900 mb-4">{activeWorksheet.title}</h2>
+              <h2 className="text-base font-bold text-[#162518] mb-4">{activeWorksheet.title}</h2>
               <WorksheetSection worksheet={activeWorksheet} />
             </div>
           )}
 
           {/* Disclaimer */}
           {prep && (
-            <div className="bg-gray-100 border border-gray-200 rounded-xl p-4 text-xs text-gray-600 leading-relaxed">
-              <strong className="text-gray-800">Disclaimer:</strong> {prep.disclaimer}
+            <div className="bg-[#eef1ea] border border-[#e4e7e0] rounded-2xl p-4 text-xs text-[#6b8f72] leading-relaxed">
+              <strong className="text-[#162518]">Disclaimer:</strong> {prep.disclaimer}
             </div>
           )}
-        </main>
+      </AppMain>
 
         {/* Mobile bottom nav */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-sm border-t border-[#e4e7e0]">
           <div className="flex items-center justify-around px-2 py-2">
             <Link href="/dashboard" className="flex flex-col items-center gap-1 py-1 px-2">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[#9aab9e]">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{dashIcon}</svg>
               </div>
-              <span className="text-[10px] font-medium text-gray-400">Dashboard</span>
+              <span className="text-[10px] font-medium text-[#9aab9e]">Dashboard</span>
             </Link>
             <Link href="/transactions" className="flex flex-col items-center gap-1 py-1 px-2">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[#9aab9e]">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{txIcon}</svg>
               </div>
-              <span className="text-[10px] font-medium text-gray-400">Transactions</span>
+              <span className="text-[10px] font-medium text-[#9aab9e]">Transactions</span>
             </Link>
             <Link href="/firs" className="flex flex-col items-center gap-1 py-1 px-2">
               <div className="w-8 h-8 rounded-xl bg-lime-400 flex items-center justify-center">
                 <svg className="w-4 h-4 text-[#162518]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{firsIcon}</svg>
               </div>
-              <span className="text-[10px] font-semibold text-lime-600">FIRS</span>
+              <span className="text-[10px] font-semibold text-[#162518]">FIRS</span>
             </Link>
           </div>
         </nav>
-      </div>
-    </div>
+    </AppPage>
   );
 }

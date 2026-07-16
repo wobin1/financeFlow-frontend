@@ -12,7 +12,18 @@ import {
   DEFAULT_VAT_DEDUCTIBLE_CATEGORIES,
   WHT_RATE_OPTIONS,
 } from '@/lib/transactions';
-import Sidebar, { sidebarContentOffsetClass } from '@/components/Sidebar';
+import {
+  AppPage,
+  AppHeader,
+  AppMain,
+  AppPanel,
+  AppLabel,
+  CurrencyBadge,
+  AppLoading,
+  fieldClassName,
+} from '@/components/app/PageChrome';
+import { Select } from '@/components/ui/Select';
+import { cn } from '@/lib/utils';
 
 type FilterTab = 'all' | 'income' | 'expenses' | 'pending';
 type SortKey  = 'date' | 'amount';
@@ -300,14 +311,7 @@ export default function TransactionsPage() {
   const upDown     = (key: SortKey) => sortKey === key ? (sortAsc ? '↑' : '↓') : '↕';
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#f0f2ee] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-lime-400 border-t-transparent rounded-full animate-spin mx-auto"/>
-          <p className="mt-4 text-gray-500 text-sm">Loading transactions…</p>
-        </div>
-      </div>
-    );
+    return <AppLoading label="Loading transactions…" />;
   }
 
   const TABS: { key: FilterTab; label: string }[] = [
@@ -318,90 +322,71 @@ export default function TransactionsPage() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-[#f0f2ee] font-sans">
+    <AppPage active="transactions">
+      <AppHeader
+        title="Transactions"
+        subtitle="Add cash entries or categorize bank transactions"
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={openAdd}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#162518] text-white text-xs font-bold hover:bg-[#243f2f] transition-all"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
+              </svg>
+              Add entry
+            </button>
+            <CurrencyBadge currency={user?.currency} />
+            <button onClick={() => authService.logout()} className="lg:hidden w-9 h-9 rounded-xl flex items-center justify-center text-[#9aab9e] hover:text-red-500 hover:bg-[#eef1ea] transition-all">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{logoutIcon}</svg>
+            </button>
+          </>
+        }
+      />
 
-      <Sidebar active="transactions" />
-
-      {/* ── Main ── */}
-      <div className={`flex-1 flex flex-col min-w-0 ${sidebarContentOffsetClass}`}>
-
-        {/* Header */}
-        <header className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
-          <div className="px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="lg:hidden w-8 h-8 rounded-lg bg-[#162518] flex items-center justify-center shrink-0">
-                <svg className="w-4 h-4 text-lime-400" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-base sm:text-lg font-bold text-gray-900">Transactions</h1>
-                <p className="text-xs text-gray-400 hidden sm:block">Add cash entries or categorize bank transactions</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={openAdd}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#1B3A2D] text-white text-xs font-bold hover:bg-[#243f2f] transition-all"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
-                </svg>
-                Add entry
-              </button>
-              <div className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-[#162518] text-white text-xs font-semibold">
-                <span className="w-1.5 h-1.5 rounded-full bg-lime-400 shrink-0"/>
-                {user?.currency ?? 'NGN'}
-              </div>
-              <button onClick={() => authService.logout()} className="lg:hidden w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-gray-100 transition-all">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{logoutIcon}</svg>
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 lg:pb-6 flex flex-col gap-5">
+      <AppMain className="flex flex-col gap-5">
 
           {/* Stat strip */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-[#1B3A2D] text-white rounded-2xl p-4 shadow-md">
-              <p className="text-[#6b9e7a] text-[10px] font-semibold uppercase tracking-widest mb-1">Total</p>
+            <div className="bg-[#162518] text-white rounded-2xl p-4 shadow-[0_1px_0_rgba(22,37,24,0.03)]">
+              <p className="text-[#6b8f72] text-[11px] font-semibold uppercase tracking-[0.06em] mb-1">Total</p>
               <p className="text-2xl font-bold">{stats.total}</p>
-              <p className="text-[#6b9e7a] text-xs mt-0.5">transactions</p>
+              <p className="text-[#6b8f72] text-xs mt-0.5">transactions</p>
             </div>
-            <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
-              <p className="text-gray-400 text-[10px] font-semibold uppercase tracking-widest mb-1">Income</p>
-              <p className="text-lg font-bold text-gray-900 leading-tight">{formatCurrency(stats.income)}</p>
-              <p className="text-lime-500 text-xs mt-0.5 font-medium">↑ received</p>
-            </div>
-            <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
-              <p className="text-gray-400 text-[10px] font-semibold uppercase tracking-widest mb-1">Expenses</p>
-              <p className="text-lg font-bold text-gray-900 leading-tight">{formatCurrency(Math.abs(stats.expenses))}</p>
-              <p className="text-red-400 text-xs mt-0.5 font-medium">↓ spent</p>
-            </div>
-            <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
-              <p className="text-gray-400 text-[10px] font-semibold uppercase tracking-widest mb-1">Pending</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
-              <p className="text-yellow-500 text-xs mt-0.5 font-medium">awaiting</p>
-            </div>
+            <AppPanel className="!p-4">
+              <p className="text-[#6b8f72] text-[11px] font-semibold uppercase tracking-[0.06em] mb-1">Income</p>
+              <p className="text-lg font-bold text-[#162518] leading-tight tabular-nums">{formatCurrency(stats.income)}</p>
+              <p className="text-lime-500 text-xs mt-0.5 font-medium">received</p>
+            </AppPanel>
+            <AppPanel className="!p-4">
+              <p className="text-[#6b8f72] text-[11px] font-semibold uppercase tracking-[0.06em] mb-1">Expenses</p>
+              <p className="text-lg font-bold text-[#162518] leading-tight tabular-nums">{formatCurrency(Math.abs(stats.expenses))}</p>
+              <p className="text-red-400 text-xs mt-0.5 font-medium">spent</p>
+            </AppPanel>
+            <AppPanel className="!p-4">
+              <p className="text-[#6b8f72] text-[11px] font-semibold uppercase tracking-[0.06em] mb-1">Pending</p>
+              <p className="text-2xl font-bold text-[#162518]">{stats.pending}</p>
+              <p className="text-amber-600 text-xs mt-0.5 font-medium">awaiting</p>
+            </AppPanel>
           </div>
 
           {/* Table card */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col flex-1">
+          <AppPanel padded={false} className="overflow-hidden flex flex-col flex-1">
 
             {/* Filter + search toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 sm:px-5 py-4 border-b border-gray-100">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 sm:px-5 py-4 border-b border-[#eef1ea]">
               {/* Tabs */}
-              <div className="flex items-center gap-1 p-1 bg-[#f0f2ee] rounded-xl overflow-x-auto scrollbar-none shrink-0">
+              <div className="flex items-center gap-1 p-1 bg-[#eef1ea] rounded-xl overflow-x-auto scrollbar-none shrink-0">
                 {TABS.map(({ key, label }) => (
                   <button
                     key={key}
                     onClick={() => setFilter(key)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                       filter === key
-                        ? 'bg-[#1B3A2D] text-white shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
+                        ? 'bg-[#162518] text-lime-400 shadow-sm'
+                        : 'text-[#6b8f72] hover:text-[#162518]'
                     }`}
                   >
                     {label}
@@ -411,7 +396,7 @@ export default function TransactionsPage() {
 
               {/* Search */}
               <div className="relative flex-1 min-w-0">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9aab9e] pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
                 <input
@@ -419,10 +404,10 @@ export default function TransactionsPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search merchant or category…"
-                  className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 bg-[#f7f8f5] text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:border-transparent transition-all"
+                  className={cn(fieldClassName, 'pl-9 pr-9')}
                 />
                 {search && (
-                  <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9aab9e] hover:text-[#162518]">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
@@ -432,13 +417,13 @@ export default function TransactionsPage() {
             </div>
 
             {/* Column headers — desktop */}
-            <div className="hidden sm:grid grid-cols-[2fr_1fr_1.2fr_1fr_0.8fr_0.6fr] px-5 py-2.5 border-b border-gray-50 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+            <div className="hidden sm:grid grid-cols-[2fr_1fr_1.2fr_1fr_0.8fr_0.6fr] px-5 py-2.5 border-b border-[#eef1ea] text-[11px] font-semibold uppercase tracking-[0.06em] text-[#6b8f72]">
               <span>Merchant</span>
-              <button onClick={() => toggleSort('date')} className="text-left hover:text-gray-600 transition-colors flex items-center gap-1">
+              <button onClick={() => toggleSort('date')} className="text-left hover:text-[#162518] transition-colors flex items-center gap-1">
                 Date <span className="font-mono">{upDown('date')}</span>
               </button>
               <span>Category</span>
-              <button onClick={() => toggleSort('amount')} className="text-right hover:text-gray-600 transition-colors flex items-center justify-end gap-1">
+              <button onClick={() => toggleSort('amount')} className="text-right hover:text-[#162518] transition-colors flex items-center justify-end gap-1">
                 Amount <span className="font-mono">{upDown('amount')}</span>
               </button>
               <span className="text-right">Status</span>
@@ -448,14 +433,14 @@ export default function TransactionsPage() {
             {/* Rows */}
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-6">
-                <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
-                  <svg className="w-7 h-7 text-gray-300" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <div className="w-14 h-14 rounded-2xl bg-[#eef1ea] flex items-center justify-center">
+                  <svg className="w-7 h-7 text-[#9aab9e]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-700">No transactions found</p>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-sm font-medium text-[#162518]">No transactions found</p>
+                  <p className="text-xs text-[#9aab9e] mt-1">
                     {search
                       ? 'Try a different search term'
                       : 'Add a cash sale or expense, or sync your bank from the dashboard'}
@@ -464,7 +449,7 @@ export default function TransactionsPage() {
                     <button
                       type="button"
                       onClick={openAdd}
-                      className="mt-4 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#1B3A2D] text-white text-xs font-bold hover:bg-[#243f2f]"
+                      className="mt-4 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#162518] text-white text-xs font-bold hover:bg-[#243f2f]"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
@@ -475,13 +460,13 @@ export default function TransactionsPage() {
                 </div>
               </div>
             ) : (
-              <div className="divide-y divide-gray-50 overflow-y-auto">
+              <div className="divide-y divide-[#eef1ea] overflow-y-auto">
                 {filtered.map((tx) => (
                   <button
                     key={tx.id}
                     type="button"
                     onClick={() => openCategorize(tx)}
-                    className="w-full text-left grid grid-cols-[auto_1fr] sm:grid-cols-[2fr_1fr_1.2fr_1fr_0.8fr_0.6fr] items-center gap-3 sm:gap-0 px-4 sm:px-5 py-3.5 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                    className="w-full text-left grid grid-cols-[auto_1fr] sm:grid-cols-[2fr_1fr_1.2fr_1fr_0.8fr_0.6fr] items-center gap-3 sm:gap-0 px-4 sm:px-5 py-3.5 hover:bg-[#f7f8f5] active:bg-[#eef1ea] transition-colors"
                   >
                     {/* Mobile layout */}
                     <div className={`sm:hidden w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${tx.amount > 0 ? 'bg-lime-100' : 'bg-red-50'}`}>
@@ -493,13 +478,13 @@ export default function TransactionsPage() {
                     </div>
                     <div className="sm:hidden flex justify-between items-start min-w-0">
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate leading-tight">
+                        <p className="text-sm font-semibold text-[#162518] truncate leading-tight">
                           {tx.merchant_name}
                           {tx.source === 'manual' && (
-                            <span className="ml-1.5 text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-md">Manual</span>
+                            <span className="ml-1.5 text-[10px] font-semibold text-[#6b8f72] bg-[#eef1ea] px-1.5 py-0.5 rounded-md">Manual</span>
                           )}
                         </p>
-                        <p className="text-xs text-gray-400 truncate">{categoryLabel(tx.category)} · {formatDate(tx.transaction_date)}</p>
+                        <p className="text-xs text-[#9aab9e] truncate">{categoryLabel(tx.category)} · {formatDate(tx.transaction_date)}</p>
                       </div>
                       <div className="text-right ml-3 shrink-0">
                         <p className={`text-sm font-bold ${tx.amount > 0 ? 'text-lime-600' : 'text-red-500'}`}>
@@ -519,20 +504,20 @@ export default function TransactionsPage() {
                         </svg>
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">
+                        <p className="text-sm font-semibold text-[#162518] truncate">
                           {tx.merchant_name}
                           {tx.source === 'manual' && (
-                            <span className="ml-1.5 text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-md align-middle">Manual</span>
+                            <span className="ml-1.5 text-[10px] font-semibold text-[#6b8f72] bg-[#eef1ea] px-1.5 py-0.5 rounded-md align-middle">Manual</span>
                           )}
                         </p>
-                        <p className="text-xs text-gray-400 truncate">{tx.raw_description}</p>
+                        <p className="text-xs text-[#9aab9e] truncate">{tx.raw_description}</p>
                       </div>
                     </div>
-                    <p className="hidden sm:block text-xs text-gray-500">{formatDate(tx.transaction_date)}</p>
-                    <p className={`hidden sm:block text-xs truncate ${tx.category ? 'text-gray-700 font-medium' : 'text-gray-300 italic'}`}>
+                    <p className="hidden sm:block text-xs text-[#6b8f72]">{formatDate(tx.transaction_date)}</p>
+                    <p className={`hidden sm:block text-xs truncate ${tx.category ? 'text-[#162518] font-medium' : 'text-[#9aab9e] italic'}`}>
                       {categoryLabel(tx.category)}
                       {(tx.vat_deductible || tx.wht_applicable) && (
-                        <span className="ml-1 text-[10px] text-gray-400 font-normal">
+                        <span className="ml-1 text-[10px] text-[#9aab9e] font-normal">
                           {tx.vat_deductible ? '· VAT' : ''}
                           {tx.wht_applicable ? ' · WHT' : ''}
                         </span>
@@ -545,7 +530,7 @@ export default function TransactionsPage() {
                       <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold ${STATUS_COLORS[tx.status] ?? 'bg-gray-100 text-gray-500'}`}>{tx.status}</span>
                     </div>
                     <div className="hidden sm:flex justify-end">
-                      <span className="text-[10px] font-semibold text-[#1B3A2D] px-2.5 py-1 rounded-lg bg-lime-50 border border-lime-200">
+                      <span className="text-[10px] font-semibold text-[#162518] px-2.5 py-1 rounded-lg bg-lime-50 border border-lime-200">
                         Categorize
                       </span>
                     </div>
@@ -556,43 +541,42 @@ export default function TransactionsPage() {
 
             {/* Footer count */}
             {filtered.length > 0 && (
-              <div className="px-5 py-3 border-t border-gray-100 text-xs text-gray-400">
-                Showing <strong className="text-gray-600">{filtered.length}</strong> of <strong className="text-gray-600">{transactions.length}</strong> transactions
+              <div className="px-5 py-3 border-t border-[#eef1ea] text-xs text-[#9aab9e]">
+                Showing <strong className="text-[#162518]">{filtered.length}</strong> of <strong className="text-[#162518]">{transactions.length}</strong> transactions
               </div>
             )}
-          </div>
-        </main>
+          </AppPanel>
+      </AppMain>
 
         {/* Mobile bottom nav */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-sm border-t border-[#e4e7e0]">
           <div className="flex items-center justify-around px-4 py-2">
             <Link href="/dashboard" className="flex flex-col items-center gap-1 py-1 px-3">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[#9aab9e]">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{dashIcon}</svg>
               </div>
-              <span className="text-[10px] font-medium text-gray-400">Dashboard</span>
+              <span className="text-[10px] font-medium text-[#9aab9e]">Dashboard</span>
             </Link>
             <Link href="/transactions" className="flex flex-col items-center gap-1 py-1 px-3">
               <div className="w-8 h-8 rounded-xl bg-lime-400 flex items-center justify-center">
                 <svg className="w-4 h-4 text-[#162518]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{txIcon}</svg>
               </div>
-              <span className="text-[10px] font-semibold text-lime-600">Transactions</span>
+              <span className="text-[10px] font-semibold text-[#162518]">Transactions</span>
             </Link>
             <Link href="/firs" className="flex flex-col items-center gap-1 py-1 px-3">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[#9aab9e]">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{firsIcon}</svg>
               </div>
-              <span className="text-[10px] font-medium text-gray-400">FIRS</span>
+              <span className="text-[10px] font-medium text-[#9aab9e]">FIRS</span>
             </Link>
             <button onClick={() => authService.logout()} className="flex flex-col items-center gap-1 py-1 px-3">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[#9aab9e]">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{logoutIcon}</svg>
               </div>
-              <span className="text-[10px] font-medium text-gray-400">Logout</span>
+              <span className="text-[10px] font-medium text-[#9aab9e]">Logout</span>
             </button>
           </div>
         </nav>
-      </div>
 
       {/* Categorize modal */}
       {editingTx && (
@@ -601,19 +585,19 @@ export default function TransactionsPage() {
           onClick={(e) => { if (e.target === e.currentTarget) closeCategorize(); }}
         >
           <div className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3 shrink-0">
+            <div className="px-5 py-4 border-b border-[#eef1ea] flex items-start justify-between gap-3 shrink-0">
               <div className="min-w-0">
-                <h2 className="text-base font-bold text-gray-900">Categorize transaction</h2>
-                <p className="text-xs text-gray-500 mt-1 truncate">{editingTx.merchant_name}</p>
+                <h2 className="text-base font-bold text-[#162518]">Categorize transaction</h2>
+                <p className="text-xs text-[#6b8f72] mt-1 truncate">{editingTx.merchant_name}</p>
                 <p className={`text-sm font-bold mt-1 ${editingTx.amount > 0 ? 'text-lime-600' : 'text-red-500'}`}>
                   {editingTx.amount > 0 ? '+' : ''}{formatCurrency(editingTx.amount)}
-                  <span className="text-gray-400 font-normal ml-2">{formatDate(editingTx.transaction_date)}</span>
+                  <span className="text-[#9aab9e] font-normal ml-2">{formatDate(editingTx.transaction_date)}</span>
                 </p>
               </div>
               <button
                 onClick={closeCategorize}
                 disabled={saving}
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:bg-gray-100 shrink-0"
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-[#9aab9e] hover:bg-[#eef1ea] shrink-0"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -621,13 +605,13 @@ export default function TransactionsPage() {
               </button>
             </div>
 
-            <div className="px-5 py-3 border-b border-gray-50 shrink-0">
+            <div className="px-5 py-3 border-b border-[#eef1ea] shrink-0">
               <input
                 type="text"
                 value={categorySearch}
                 onChange={(e) => setCategorySearch(e.target.value)}
                 placeholder="Search categories…"
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-[#f7f8f5] text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:border-transparent"
+                className={fieldClassName}
               />
             </div>
 
@@ -637,7 +621,7 @@ export default function TransactionsPage() {
                 if (items.length === 0) return null;
                 return (
                   <div key={group} className="mb-4">
-                    <p className="px-2 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                    <p className="px-2 mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[#6b8f72]">
                       {group}
                     </p>
                     <div className="flex flex-col gap-1">
@@ -650,8 +634,8 @@ export default function TransactionsPage() {
                             onClick={() => selectCategory(cat.value)}
                             className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all flex items-center justify-between gap-2 ${
                               active
-                                ? 'bg-[#1B3A2D] text-white'
-                                : 'hover:bg-gray-50 text-gray-800'
+                                ? 'bg-[#162518] text-white'
+                                : 'hover:bg-[#f7f8f5] text-[#162518]'
                             }`}
                           >
                             <span className="font-medium">{cat.label}</span>
@@ -668,53 +652,54 @@ export default function TransactionsPage() {
                 );
               })}
               {filteredCategories.length === 0 && (
-                <p className="text-center text-sm text-gray-400 py-8">No matching categories</p>
+                <p className="text-center text-sm text-[#9aab9e] py-8">No matching categories</p>
               )}
             </div>
 
-            <div className="px-5 py-4 border-t border-gray-100 shrink-0 space-y-3">
+            <div className="px-5 py-4 border-t border-[#eef1ea] shrink-0 space-y-3">
               {editingTx && editingTx.amount < 0 && (
                 <div className="space-y-2.5">
-                  <label className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-[#f7f8f5] cursor-pointer">
+                  <label className="flex items-start gap-3 p-3 rounded-xl border border-[#e4e7e0] bg-[#f7f8f5] cursor-pointer">
                     <input
                       type="checkbox"
                       checked={vatDeductible}
                       onChange={(e) => setVatDeductible(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#1B3A2D] focus:ring-lime-400"
+                      className="mt-0.5 w-4 h-4 rounded border-[#d8ddd2] text-[#162518] focus:ring-[#162518]/20"
                     />
                     <span>
-                      <span className="text-sm font-semibold text-gray-900 block">VAT deductible</span>
-                      <span className="text-[11px] text-gray-500 leading-snug">
+                      <span className="text-sm font-semibold text-[#162518] block">VAT deductible</span>
+                      <span className="text-[11px] text-[#6b8f72] leading-snug">
                         Claim input VAT (7.5%) on this purchase for FIRS VAT return
                       </span>
                     </span>
                   </label>
 
-                  <label className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-[#f7f8f5] cursor-pointer">
+                  <label className="flex items-start gap-3 p-3 rounded-xl border border-[#e4e7e0] bg-[#f7f8f5] cursor-pointer">
                     <input
                       type="checkbox"
                       checked={whtApplicable}
                       onChange={(e) => setWhtApplicable(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#1B3A2D] focus:ring-lime-400"
+                      className="mt-0.5 w-4 h-4 rounded border-[#d8ddd2] text-[#162518] focus:ring-[#162518]/20"
                     />
                     <span className="flex-1 min-w-0">
-                      <span className="text-sm font-semibold text-gray-900 block">WHT applicable</span>
-                      <span className="text-[11px] text-gray-500 leading-snug">
+                      <span className="text-sm font-semibold text-[#162518] block">WHT applicable</span>
+                      <span className="text-[11px] text-[#6b8f72] leading-snug">
                         This payment is subject to withholding tax
                       </span>
                       {whtApplicable && (
-                        <select
+                        <Select
+                          compact
                           value={whtRate}
                           onChange={(e) => setWhtRate(Number(e.target.value))}
                           onClick={(e) => e.stopPropagation()}
-                          className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"
+                          className="mt-2"
                         >
                           {WHT_RATE_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value}>
                               WHT rate {opt.label}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       )}
                     </span>
                   </label>
@@ -726,15 +711,15 @@ export default function TransactionsPage() {
                   {saveError}
                 </p>
               )}
-              <p className="text-[11px] text-gray-400">
-                Saving will set status to <strong className="text-gray-600">confirmed</strong> for FIRS prep.
+              <p className="text-[11px] text-[#9aab9e]">
+                Saving will set status to <strong className="text-[#162518]">confirmed</strong> for FIRS prep.
               </p>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={closeCategorize}
                   disabled={saving}
-                  className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+                  className="flex-1 py-3 rounded-xl border border-[#e4e7e0] text-sm font-semibold text-[#6b8f72] hover:bg-[#f7f8f5] disabled:opacity-60"
                 >
                   Cancel
                 </button>
@@ -742,7 +727,7 @@ export default function TransactionsPage() {
                   type="button"
                   onClick={saveCategory}
                   disabled={saving || !selectedCategory}
-                  className="flex-1 py-3 rounded-xl bg-[#1B3A2D] text-white text-sm font-bold hover:bg-[#243f2f] disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="flex-1 py-3 rounded-xl bg-[#162518] text-white text-sm font-bold hover:bg-[#243f2f] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {saving ? 'Saving…' : 'Save category'}
                 </button>
@@ -759,15 +744,15 @@ export default function TransactionsPage() {
           onClick={(e) => { if (e.target === e.currentTarget) closeAdd(); }}
         >
           <div className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3 shrink-0">
+            <div className="px-5 py-4 border-b border-[#eef1ea] flex items-start justify-between gap-3 shrink-0">
               <div>
-                <h2 className="text-base font-bold text-gray-900">Add manual entry</h2>
-                <p className="text-xs text-gray-500 mt-1">Record a cash sale, expense, or other bookkeeping entry</p>
+                <h2 className="text-base font-bold text-[#162518]">Add manual entry</h2>
+                <p className="text-xs text-[#6b8f72] mt-1">Record a cash sale, expense, or other bookkeeping entry</p>
               </div>
               <button
                 onClick={closeAdd}
                 disabled={adding}
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:bg-gray-100 shrink-0"
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-[#9aab9e] hover:bg-[#eef1ea] shrink-0"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -776,7 +761,7 @@ export default function TransactionsPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-              <div className="flex p-1 bg-[#f0f2ee] rounded-xl">
+              <div className="flex p-1 bg-[#eef1ea] rounded-xl">
                 {([
                   { key: 'expense' as EntryType, label: 'Expense' },
                   { key: 'income' as EntryType, label: 'Income' },
@@ -787,8 +772,8 @@ export default function TransactionsPage() {
                     onClick={() => switchEntryType(key)}
                     className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
                       entryType === key
-                        ? 'bg-[#1B3A2D] text-white shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
+                        ? 'bg-[#162518] text-lime-400 shadow-sm'
+                        : 'text-[#6b8f72] hover:text-[#162518]'
                     }`}
                   >
                     {label}
@@ -797,23 +782,19 @@ export default function TransactionsPage() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">
-                  Merchant / payee
-                </label>
+                <AppLabel>Merchant / payee</AppLabel>
                 <input
                   type="text"
                   value={merchantName}
                   onChange={(e) => setMerchantName(e.target.value)}
                   placeholder={entryType === 'income' ? 'Customer or payer' : 'Vendor or payee'}
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-[#f7f8f5] text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:border-transparent"
+                  className={cn(fieldClassName, 'mt-1.5')}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">
-                    Amount ({user?.currency ?? 'NGN'})
-                  </label>
+                  <AppLabel>Amount ({user?.currency ?? 'NGN'})</AppLabel>
                   <input
                     type="number"
                     min="0"
@@ -821,53 +802,49 @@ export default function TransactionsPage() {
                     value={amountInput}
                     onChange={(e) => setAmountInput(e.target.value)}
                     placeholder="0.00"
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-[#f7f8f5] text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:border-transparent"
+                    className={cn(fieldClassName, 'mt-1.5')}
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">
-                    Date
-                  </label>
+                  <AppLabel>Date</AppLabel>
                   <input
                     type="date"
                     value={txDate}
                     onChange={(e) => setTxDate(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-[#f7f8f5] text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:border-transparent"
+                    className={cn(fieldClassName, 'mt-1.5')}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">
-                  Description <span className="normal-case tracking-normal font-normal">(optional)</span>
-                </label>
+                <AppLabel>
+                  Description <span className="normal-case tracking-normal font-normal text-[#9aab9e]">(optional)</span>
+                </AppLabel>
                 <input
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Note or reference"
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-[#f7f8f5] text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:border-transparent"
+                  className={cn(fieldClassName, 'mt-1.5')}
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">
-                  Category
-                </label>
+                <AppLabel>Category</AppLabel>
                 <input
                   type="text"
                   value={addCategorySearch}
                   onChange={(e) => setAddCategorySearch(e.target.value)}
                   placeholder="Search categories…"
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-[#f7f8f5] text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:border-transparent mb-2"
+                  className={cn(fieldClassName, 'mt-1.5 mb-2')}
                 />
-                <div className="max-h-40 overflow-y-auto rounded-xl border border-gray-100 p-1">
+                <div className="max-h-40 overflow-y-auto rounded-xl border border-[#eef1ea] p-1">
                   {addCategoryGroups.map((group) => {
                     const items = addCategories.filter((c) => c.group === group);
                     if (items.length === 0) return null;
                     return (
                       <div key={group} className="mb-2">
-                        <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                        <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[#6b8f72]">
                           {group}
                         </p>
                         {items.map((cat) => {
@@ -879,8 +856,8 @@ export default function TransactionsPage() {
                               onClick={() => selectAddCategory(cat.value)}
                               className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
                                 active
-                                  ? 'bg-[#1B3A2D] text-white'
-                                  : 'hover:bg-gray-50 text-gray-800'
+                                  ? 'bg-[#162518] text-white'
+                                  : 'hover:bg-[#f7f8f5] text-[#162518]'
                               }`}
                             >
                               {cat.label}
@@ -891,52 +868,53 @@ export default function TransactionsPage() {
                     );
                   })}
                   {addCategories.length === 0 && (
-                    <p className="text-center text-sm text-gray-400 py-6">No matching categories</p>
+                    <p className="text-center text-sm text-[#9aab9e] py-6">No matching categories</p>
                   )}
                 </div>
               </div>
 
               {entryType === 'expense' && (
                 <div className="space-y-2.5">
-                  <label className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-[#f7f8f5] cursor-pointer">
+                  <label className="flex items-start gap-3 p-3 rounded-xl border border-[#e4e7e0] bg-[#f7f8f5] cursor-pointer">
                     <input
                       type="checkbox"
                       checked={addVat}
                       onChange={(e) => setAddVat(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#1B3A2D] focus:ring-lime-400"
+                      className="mt-0.5 w-4 h-4 rounded border-[#d8ddd2] text-[#162518] focus:ring-[#162518]/20"
                     />
                     <span>
-                      <span className="text-sm font-semibold text-gray-900 block">VAT deductible</span>
-                      <span className="text-[11px] text-gray-500 leading-snug">
+                      <span className="text-sm font-semibold text-[#162518] block">VAT deductible</span>
+                      <span className="text-[11px] text-[#6b8f72] leading-snug">
                         Claim input VAT (7.5%) on this purchase
                       </span>
                     </span>
                   </label>
-                  <label className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-[#f7f8f5] cursor-pointer">
+                  <label className="flex items-start gap-3 p-3 rounded-xl border border-[#e4e7e0] bg-[#f7f8f5] cursor-pointer">
                     <input
                       type="checkbox"
                       checked={addWht}
                       onChange={(e) => setAddWht(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#1B3A2D] focus:ring-lime-400"
+                      className="mt-0.5 w-4 h-4 rounded border-[#d8ddd2] text-[#162518] focus:ring-[#162518]/20"
                     />
                     <span className="flex-1 min-w-0">
-                      <span className="text-sm font-semibold text-gray-900 block">WHT applicable</span>
-                      <span className="text-[11px] text-gray-500 leading-snug">
+                      <span className="text-sm font-semibold text-[#162518] block">WHT applicable</span>
+                      <span className="text-[11px] text-[#6b8f72] leading-snug">
                         This payment is subject to withholding tax
                       </span>
                       {addWht && (
-                        <select
+                        <Select
+                          compact
                           value={addWhtRate}
                           onChange={(e) => setAddWhtRate(Number(e.target.value))}
                           onClick={(e) => e.stopPropagation()}
-                          className="mt-2 w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"
+                          className="mt-2"
                         >
                           {WHT_RATE_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value}>
                               WHT rate {opt.label}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       )}
                     </span>
                   </label>
@@ -944,7 +922,7 @@ export default function TransactionsPage() {
               )}
             </div>
 
-            <div className="px-5 py-4 border-t border-gray-100 shrink-0 space-y-3">
+            <div className="px-5 py-4 border-t border-[#eef1ea] shrink-0 space-y-3">
               {addError && (
                 <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
                   {addError}
@@ -955,7 +933,7 @@ export default function TransactionsPage() {
                   type="button"
                   onClick={closeAdd}
                   disabled={adding}
-                  className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+                  className="flex-1 py-3 rounded-xl border border-[#e4e7e0] text-sm font-semibold text-[#6b8f72] hover:bg-[#f7f8f5] disabled:opacity-60"
                 >
                   Cancel
                 </button>
@@ -963,7 +941,7 @@ export default function TransactionsPage() {
                   type="button"
                   onClick={saveManualEntry}
                   disabled={adding || !merchantName.trim() || !addCategory || !amountInput}
-                  className="flex-1 py-3 rounded-xl bg-[#1B3A2D] text-white text-sm font-bold hover:bg-[#243f2f] disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="flex-1 py-3 rounded-xl bg-[#162518] text-white text-sm font-bold hover:bg-[#243f2f] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {adding ? 'Saving…' : 'Save entry'}
                 </button>
@@ -972,6 +950,6 @@ export default function TransactionsPage() {
           </div>
         </div>
       )}
-    </div>
+    </AppPage>
   );
 }

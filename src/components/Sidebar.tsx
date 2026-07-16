@@ -2,20 +2,26 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { authService } from '@/lib/auth';
+import { authService, type User } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
 const STORAGE_KEY = 'ff-sidebar-collapsed';
 const EXPANDED_W = '220px';
 const COLLAPSED_W = '72px';
 
-export type SidebarActive = 'dashboard' | 'transactions' | 'firs' | 'billing';
+export type SidebarActive =
+  | 'dashboard'
+  | 'transactions'
+  | 'firs'
+  | 'billing'
+  | 'admin';
 
 const navItems: {
   id: SidebarActive;
   href: string;
   label: string;
   icon: ReactNode;
+  adminOnly?: boolean;
 }[] = [
   {
     id: 'dashboard',
@@ -66,6 +72,19 @@ const navItems: {
       />
     ),
   },
+  {
+    id: 'admin',
+    href: '/admin',
+    label: 'Admin',
+    adminOnly: true,
+    icon: (
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+      />
+    ),
+  },
 ];
 
 function applySidebarWidth(collapsed: boolean) {
@@ -79,12 +98,14 @@ function applySidebarWidth(collapsed: boolean) {
 export default function Sidebar({ active }: { active: SidebarActive }) {
   const [collapsed, setCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY) === '1';
     setCollapsed(saved);
     applySidebarWidth(saved);
     setHydrated(true);
+    authService.getCurrentUser().then(setUser).catch(() => setUser(null));
   }, []);
 
   useEffect(() => {
@@ -97,6 +118,10 @@ export default function Sidebar({ active }: { active: SidebarActive }) {
     setCollapsed((prev) => !prev);
   }, []);
 
+  const visibleNav = navItems.filter(
+    (item) => !item.adminOnly || authService.isAdmin(user),
+  );
+
   return (
     <aside
       className={cn(
@@ -106,7 +131,6 @@ export default function Sidebar({ active }: { active: SidebarActive }) {
       )}
       style={{ width: collapsed ? COLLAPSED_W : EXPANDED_W }}
     >
-      {/* Brand */}
       <div
         className={cn(
           'flex items-center shrink-0 pt-6 pb-8',
@@ -126,14 +150,13 @@ export default function Sidebar({ active }: { active: SidebarActive }) {
         )}
       </div>
 
-      {/* Nav */}
       <nav
         className={cn(
           'flex flex-col gap-1.5 flex-1',
           collapsed ? 'items-center' : 'items-stretch',
         )}
       >
-        {navItems.map((item) => {
+        {visibleNav.map((item) => {
           const isActive = active === item.id;
           return (
             <Link
@@ -142,9 +165,7 @@ export default function Sidebar({ active }: { active: SidebarActive }) {
               title={collapsed ? item.label : undefined}
               className={cn(
                 'rounded-xl flex items-center transition-all',
-                collapsed
-                  ? 'w-10 h-10 justify-center'
-                  : 'h-10 gap-3 px-3',
+                collapsed ? 'w-10 h-10 justify-center' : 'h-10 gap-3 px-3',
                 isActive
                   ? 'bg-lime-400 text-[#162518]'
                   : 'text-[#6b8f72] hover:text-lime-400 hover:bg-white/5',
@@ -167,7 +188,6 @@ export default function Sidebar({ active }: { active: SidebarActive }) {
         })}
       </nav>
 
-      {/* Footer: collapse + logout */}
       <div
         className={cn(
           'flex flex-col gap-1.5 pb-6 mt-auto',

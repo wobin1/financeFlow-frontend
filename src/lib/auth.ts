@@ -6,6 +6,7 @@ export interface User {
   email: string;
   full_name: string;
   is_active: boolean;
+  role?: string;
   plaid_access_token?: string;
   business_name?: string;
   cac_number?: string;
@@ -68,5 +69,9 @@ export const authService = {
 
   isAuthenticated(): boolean {
     return !!Cookies.get('access_token');
-  }
+  },
+
+  isAdmin(user: User | null | undefined): boolean {
+    return (user?.role || 'user') === 'admin';
+  },
 };
