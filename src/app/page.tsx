@@ -216,6 +216,79 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── Pricing ── */}
+      <section className="max-w-6xl mx-auto px-5 sm:px-8 py-20">
+        <div className="text-center mb-12">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">Simple pricing</h2>
+          <p className="text-gray-500 text-sm sm:text-base max-w-xl mx-auto">
+            Start free. Upgrade when you need AI categorization, FIRS prep, or higher limits.
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            {
+              name: 'Free',
+              price: '₦0',
+              blurb: 'Essentials to get going',
+              features: ['Manual transactions only', '50 transactions / month', 'Basic dashboard'],
+            },
+            {
+              name: 'Starter',
+              price: '₦3,500',
+              blurb: 'Unlimited tracking + tax prep',
+              features: ['No bank linking', 'Unlimited transactions', 'Manual categorization', 'FIRS filing prep'],
+            },
+            {
+              name: 'Growth',
+              price: '₦10,000',
+              blurb: 'Bank sync and AI categorization',
+              features: ['2 bank accounts', 'Unlimited transactions', 'AI categorization', 'FIRS CSV export', 'Advanced analytics'],
+              featured: true,
+            },
+            {
+              name: 'Business',
+              price: '₦20,000',
+              blurb: 'More accounts + priority support',
+              features: ['5 bank accounts', 'Unlimited transactions', 'Everything in Growth', 'Priority support'],
+            },
+          ].map(({ name, price, blurb, features, featured }) => (
+            <div
+              key={name}
+              className={`rounded-2xl p-5 border flex flex-col ${
+                featured
+                  ? 'bg-[#1B3A2D] border-[#1B3A2D] text-white shadow-md'
+                  : 'bg-white border-gray-200 shadow-sm'
+              }`}
+            >
+              <p className={`text-sm font-bold ${featured ? 'text-lime-400' : 'text-gray-900'}`}>{name}</p>
+              <p className={`mt-2 text-2xl font-bold ${featured ? 'text-white' : 'text-gray-900'}`}>
+                {price}
+                <span className={`text-xs font-medium ml-1 ${featured ? 'text-[#6b9e7a]' : 'text-gray-400'}`}>/mo</span>
+              </p>
+              <p className={`text-xs mt-2 ${featured ? 'text-[#9bb8a3]' : 'text-gray-500'}`}>{blurb}</p>
+              <ul className={`mt-4 space-y-2 flex-1 ${featured ? 'text-[#c5d9cb]' : 'text-gray-600'}`}>
+                {features.map((f) => (
+                  <li key={f} className="text-xs flex gap-2">
+                    <span className={featured ? 'text-lime-400' : 'text-[#1B3A2D]'}>✓</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/register"
+                className={`mt-5 text-center text-sm font-semibold py-2.5 rounded-xl transition-colors ${
+                  featured
+                    ? 'bg-lime-400 text-[#162518] hover:bg-lime-300'
+                    : 'bg-[#1B3A2D] text-white hover:bg-[#243f2f]'
+                }`}
+              >
+                Get started
+              </Link>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* ── Final CTA ── */}
       <section className="max-w-6xl mx-auto px-5 sm:px-8 py-20">
         <div className="bg-[#1B3A2D] rounded-3xl px-8 sm:px-16 py-14 text-center relative overflow-hidden">

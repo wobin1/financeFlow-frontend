@@ -10,6 +10,7 @@ export interface Transaction {
   category: string | null;
   ai_confidence: number | null;
   status: 'pending' | 'confirmed' | 'rejected' | 'flagged';
+  source?: 'bank' | 'manual';
   vat_deductible?: boolean | null;
   wht_applicable?: boolean | null;
   wht_rate?: number | null;
@@ -19,8 +20,14 @@ export interface Transaction {
 export interface TransactionCreate {
   merchant_name: string;
   amount: number;
-  description: string;
+  description?: string;
   transaction_date: string;
+  currency?: string;
+  source?: 'bank' | 'manual';
+  category: string;
+  vat_deductible?: boolean | null;
+  wht_applicable?: boolean | null;
+  wht_rate?: number | null;
 }
 
 export interface TransactionSummary {
@@ -109,7 +116,7 @@ export const transactionService = {
   },
 
   async createTransaction(data: TransactionCreate): Promise<Transaction> {
-    const response = await api.post('/transactions', data);
+    const response = await api.post('/transactions/', data);
     return response.data;
   },
 

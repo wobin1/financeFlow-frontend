@@ -11,6 +11,7 @@ import {
   FirsWorksheet,
   FirsField,
 } from '@/lib/firs';
+import Sidebar, { sidebarContentOffsetClass } from '@/components/Sidebar';
 
 type TabKey = 'vat' | 'wht' | 'cit';
 
@@ -100,6 +101,7 @@ export default function FirsPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [upgradeRequired, setUpgradeRequired] = useState(false);
   const [profileForm, setProfileForm] = useState({
     business_name: '',
     tin_number: '',
@@ -108,11 +110,17 @@ export default function FirsPage() {
 
   const loadPrep = useCallback(async () => {
     setLoading(true);
+    setUpgradeRequired(false);
     try {
       const data = await firsService.getFilingPrep(year, month);
       setPrep(data);
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('Failed to load FIRS prep:', e);
+      const status = (e as { response?: { status?: number } })?.response?.status;
+      if (status === 402) {
+        setUpgradeRequired(true);
+        setPrep(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -174,30 +182,9 @@ export default function FirsPage() {
   return (
     <div className="flex min-h-screen bg-[#f0f2ee] font-sans">
 
-      {/* Sidebar */}
-      <aside className="hidden lg:flex w-[72px] bg-[#162518] flex-col items-center py-6 shrink-0 fixed left-0 top-0 bottom-0 z-30">
-        <div className="w-10 h-10 rounded-xl bg-lime-400 flex items-center justify-center mb-10 shrink-0">
-          <svg className="w-6 h-6 text-[#162518]" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-          </svg>
-        </div>
-        <nav className="flex flex-col items-center gap-2 flex-1">
-          <Link href="/dashboard" className="w-10 h-10 rounded-xl flex items-center justify-center text-[#6b8f72] hover:text-lime-400 hover:bg-white/5 transition-all" title="Dashboard">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{dashIcon}</svg>
-          </Link>
-          <Link href="/transactions" className="w-10 h-10 rounded-xl flex items-center justify-center text-[#6b8f72] hover:text-lime-400 hover:bg-white/5 transition-all" title="Transactions">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{txIcon}</svg>
-          </Link>
-          <Link href="/firs" className="w-10 h-10 rounded-xl bg-lime-400 flex items-center justify-center" title="FIRS Filing">
-            <svg className="w-5 h-5 text-[#162518]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{firsIcon}</svg>
-          </Link>
-        </nav>
-        <button onClick={() => authService.logout()} className="w-10 h-10 rounded-xl flex items-center justify-center text-[#6b8f72] hover:text-red-400 hover:bg-white/5 transition-all mt-auto" title="Sign out">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{logoutIcon}</svg>
-        </button>
-      </aside>
+      <Sidebar active="firs" />
 
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-[72px]">
+      <div className={`flex-1 flex flex-col min-w-0 ${sidebarContentOffsetClass}`}>
 
         {/* Header */}
         <header className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
@@ -223,6 +210,23 @@ export default function FirsPage() {
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 lg:pb-6 flex flex-col gap-5">
 
+          {upgradeRequired && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-amber-900">FIRS filing is on paid plans</p>
+                <p className="text-xs text-amber-800 mt-1">
+                  Upgrade to Starter or higher to unlock VAT, WHT, and CIT prep worksheets.
+                </p>
+              </div>
+              <Link
+                href="/billing"
+                className="shrink-0 inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-[#1B3A2D] text-white text-sm font-semibold hover:bg-[#243f2f]"
+              >
+                View plans
+              </Link>
+            </div>
+          )}
+
           {/* Period selector */}
           <div className="bg-white rounded-2xl border border-gray-200 p-4 flex flex-col sm:flex-row sm:items-end gap-4">
             <div className="flex-1">
@@ -231,7 +235,7 @@ export default function FirsPage() {
                 <select
                   value={month}
                   onChange={(e) => setMonth(Number(e.target.value))}
-                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm bg-white"
+                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm bg-white text-gray-900"
                 >
                   {MONTHS.map((m, i) => (
                     <option key={m} value={i + 1}>{m}</option>
@@ -240,7 +244,7 @@ export default function FirsPage() {
                 <select
                   value={year}
                   onChange={(e) => setYear(Number(e.target.value))}
-                  className="w-28 px-3 py-2 rounded-xl border border-gray-200 text-sm bg-white"
+                  className="w-28 px-3 py-2 rounded-xl border border-gray-200 text-sm bg-white text-gray-900"
                 >
                   {[now.getFullYear(), now.getFullYear() - 1, now.getFullYear() - 2].map((y) => (
                     <option key={y} value={y}>{y}</option>
@@ -270,7 +274,7 @@ export default function FirsPage() {
                   value={profileForm.business_name}
                   onChange={(e) => setProfileForm((p) => ({ ...p, business_name: e.target.value }))}
                   placeholder="Registered business name"
-                  className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 text-sm"
+                  className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder-gray-400"
                 />
               </div>
               <div>
@@ -279,7 +283,7 @@ export default function FirsPage() {
                   value={profileForm.tin_number}
                   onChange={(e) => setProfileForm((p) => ({ ...p, tin_number: e.target.value }))}
                   placeholder="Tax Identification Number"
-                  className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 text-sm"
+                  className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder-gray-400"
                 />
               </div>
               <div>
@@ -288,7 +292,7 @@ export default function FirsPage() {
                   value={profileForm.cac_number}
                   onChange={(e) => setProfileForm((p) => ({ ...p, cac_number: e.target.value }))}
                   placeholder="RC / BN number"
-                  className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 text-sm"
+                  className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder-gray-400"
                 />
               </div>
             </div>
