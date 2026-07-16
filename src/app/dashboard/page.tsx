@@ -6,12 +6,15 @@ import Link from 'next/link';
 import { authService, User } from '@/lib/auth';
 import { transactionService, Transaction, TransactionSummary } from '@/lib/transactions';
 import MonoConnect from '@/components/MonoConnect';
+import Sidebar, { sidebarContentOffsetClass } from '@/components/Sidebar';
 import { monoApiService } from '@/lib/mono';
+import { billingService, type SubscriptionInfo } from '@/lib/billing';
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<TransactionSummary | null>(null);
+  const [billing, setBilling] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [bankConnected, setBankConnected] = useState(false);
   const [showMonoConnect, setShowMonoConnect] = useState(false);
@@ -32,14 +35,16 @@ export default function DashboardPage() {
         
         setUser(currentUser);
         
-        // Load transactions and summary
-        const [transactionsData, summaryData] = await Promise.all([
+        // Load transactions, summary, and billing usage
+        const [transactionsData, summaryData, billingData] = await Promise.all([
           transactionService.getTransactions({ limit: 10 }),
-          transactionService.getSummary()
+          transactionService.getSummary(),
+          billingService.getSubscription().catch(() => null),
         ]);
         
         setTransactions(transactionsData);
         setSummary(summaryData);
+        setBilling(billingData);
       } catch (error) {
         console.error('Failed to load dashboard:', error);
       } finally {
@@ -159,34 +164,17 @@ export default function DashboardPage() {
   // Reusable icon paths
   const dashIcon = <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>;
   const txIcon   = <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>;
+  const firsIcon = <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>;
   const syncIcon = <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>;
   const logoutIcon = <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>;
 
   return (
     <div className="flex min-h-screen bg-[#f0f2ee] font-sans">
 
-      {/* ── Desktop Sidebar ── */}
-      <aside className="hidden lg:flex w-[72px] bg-[#162518] flex-col items-center py-6 shrink-0 fixed left-0 top-0 bottom-0 z-30">
-        <div className="w-10 h-10 rounded-xl bg-lime-400 flex items-center justify-center mb-10 shrink-0">
-          <svg className="w-6 h-6 text-[#162518]" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-          </svg>
-        </div>
-        <nav className="flex flex-col items-center gap-2 flex-1">
-          <Link href="/dashboard" className="w-10 h-10 rounded-xl bg-lime-400 flex items-center justify-center" title="Dashboard">
-            <svg className="w-5 h-5 text-[#162518]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{dashIcon}</svg>
-          </Link>
-          <Link href="/transactions" className="w-10 h-10 rounded-xl flex items-center justify-center text-[#6b8f72] hover:text-lime-400 hover:bg-white/5 transition-all" title="Transactions">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{txIcon}</svg>
-          </Link>
-        </nav>
-        <button onClick={handleLogout} className="w-10 h-10 rounded-xl flex items-center justify-center text-[#6b8f72] hover:text-red-400 hover:bg-white/5 transition-all mt-auto" title="Sign out">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{logoutIcon}</svg>
-        </button>
-      </aside>
+      <Sidebar active="dashboard" />
 
       {/* ── Content (offset by sidebar on desktop) ── */}
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-[72px]">
+      <div className={`flex-1 flex flex-col min-w-0 ${sidebarContentOffsetClass}`}>
 
         {/* ── Top header ── */}
         <header className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
@@ -439,15 +427,37 @@ export default function DashboardPage() {
                 <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm shrink-0 w-56 sm:w-64 lg:w-full">
                   <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest mb-2">Total Transactions</p>
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
-                    {summary?.total_transactions ?? transactions.length}
+                    {billing?.usage.transactions_this_month ?? summary?.total_transactions ?? transactions.length}
                   </p>
-                  <div className="mt-3 w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                    <div
-                      className="bg-lime-400 h-1.5 rounded-full transition-all duration-700"
-                      style={{ width: `${Math.min(((summary?.total_transactions ?? 0) / 100) * 100, 100)}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-gray-400 mt-1.5">of 100 monthly limit</p>
+                  {(() => {
+                    const used = billing?.usage.transactions_this_month ?? 0;
+                    const limit = billing?.usage.transactions_limit;
+                    const unlimited = limit == null && !!billing;
+                    const pct = limit ? Math.min((used / Math.max(limit, 1)) * 100, 100) : 0;
+                    return (
+                      <>
+                        {!unlimited && limit != null && (
+                          <div className="mt-3 w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className="bg-lime-400 h-1.5 rounded-full transition-all duration-700"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        )}
+                        <p className="text-[10px] text-gray-400 mt-1.5">
+                          {unlimited
+                            ? `${billing?.plan.name || 'Plan'} · unlimited this month`
+                            : limit != null
+                              ? `of ${limit} monthly limit · ${billing?.plan.name || 'Free'}`
+                              : 'this month'}
+                          {' · '}
+                          <Link href="/billing" className="text-[#1B3A2D] font-semibold hover:underline">
+                            Upgrade
+                          </Link>
+                        </p>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -469,6 +479,18 @@ export default function DashboardPage() {
                         ? <span className="flex items-center justify-center gap-2"><span className="w-3.5 h-3.5 border-2 border-[#162518]/30 border-t-[#162518] rounded-full animate-spin"/>Syncing…</span>
                         : '↻ Sync Transactions'}
                     </button>
+                  </>
+                ) : (billing?.plan.max_banks ?? 0) === 0 ? (
+                  <>
+                    <p className="text-[#6b9e7a] text-sm leading-relaxed mb-4">
+                      Bank linking starts on Growth. Upgrade to sync Nigerian accounts automatically.
+                    </p>
+                    <Link
+                      href="/billing"
+                      className="block w-full text-center py-3 rounded-xl bg-lime-400 text-[#162518] text-sm font-bold hover:bg-lime-300 active:scale-95 transition-all"
+                    >
+                      Upgrade to link bank
+                    </Link>
                   </>
                 ) : (
                   <>
@@ -507,18 +529,49 @@ export default function DashboardPage() {
             </Link>
 
             {/* Connect / Sync CTA */}
-            <button
-              onClick={isBankLinked ? handleSyncTransactions : () => setShowMonoConnect(true)}
-              disabled={isSyncing}
-              className="flex flex-col items-center gap-1 py-1 px-3"
-            >
-              <div className="w-8 h-8 rounded-xl bg-[#1B3A2D] flex items-center justify-center">
-                <svg className={`w-4 h-4 text-lime-400 ${isSyncing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  {isBankLinked ? syncIcon : <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>}
-                </svg>
+            {isBankLinked ? (
+              <button
+                onClick={handleSyncTransactions}
+                disabled={isSyncing}
+                className="flex flex-col items-center gap-1 py-1 px-3"
+              >
+                <div className="w-8 h-8 rounded-xl bg-[#1B3A2D] flex items-center justify-center">
+                  <svg className={`w-4 h-4 text-lime-400 ${isSyncing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    {syncIcon}
+                  </svg>
+                </div>
+                <span className="text-[10px] font-medium text-gray-500">Sync</span>
+              </button>
+            ) : (billing?.plan.max_banks ?? 0) === 0 ? (
+              <Link href="/billing" className="flex flex-col items-center gap-1 py-1 px-3">
+                <div className="w-8 h-8 rounded-xl bg-[#1B3A2D] flex items-center justify-center">
+                  <svg className="w-4 h-4 text-lime-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
+                  </svg>
+                </div>
+                <span className="text-[10px] font-medium text-gray-500">Upgrade</span>
+              </Link>
+            ) : (
+              <button
+                onClick={() => setShowMonoConnect(true)}
+                className="flex flex-col items-center gap-1 py-1 px-3"
+              >
+                <div className="w-8 h-8 rounded-xl bg-[#1B3A2D] flex items-center justify-center">
+                  <svg className="w-4 h-4 text-lime-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
+                  </svg>
+                </div>
+                <span className="text-[10px] font-medium text-gray-500">Connect</span>
+              </button>
+            )}
+
+            {/* FIRS */}
+            <Link href="/firs" className="flex flex-col items-center gap-1 py-1 px-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">{firsIcon}</svg>
               </div>
-              <span className="text-[10px] font-medium text-gray-500">{isBankLinked ? 'Sync' : 'Connect'}</span>
-            </button>
+              <span className="text-[10px] font-medium text-gray-400">FIRS</span>
+            </Link>
 
             {/* Logout */}
             <button onClick={handleLogout} className="flex flex-col items-center gap-1 py-1 px-3">

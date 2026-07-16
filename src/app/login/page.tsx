@@ -1,16 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { authService } from '@/lib/auth';
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,7 +20,10 @@ export default function LoginPage() {
     setError('');
     try {
       await authService.login({ username: email, password });
-      router.push('/dashboard');
+      const next = searchParams.get('next');
+      const safeNext =
+        next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard';
+      router.push(safeNext);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Invalid email or password');
     } finally {
@@ -136,5 +141,19 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#f7f8f5] flex items-center justify-center">
+          <p className="text-gray-500 text-sm">Loading…</p>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }
