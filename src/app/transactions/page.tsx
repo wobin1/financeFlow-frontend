@@ -20,10 +20,12 @@ import {
   AppLabel,
   CurrencyBadge,
   AppLoading,
+  AppErrorState,
   fieldClassName,
 } from '@/components/app/PageChrome';
 import { Select } from '@/components/ui/Select';
 import { cn } from '@/lib/utils';
+import { getApiErrorMessage } from '@/lib/api';
 
 type FilterTab = 'all' | 'income' | 'expenses' | 'pending';
 type SortKey  = 'date' | 'amount';
@@ -71,23 +73,28 @@ export default function TransactionsPage() {
   const [addCategorySearch, setAddCategorySearch] = useState('');
   const [adding, setAdding]           = useState(false);
   const [addError, setAddError]       = useState<string | null>(null);
+  const [loadError, setLoadError]     = useState<string | null>(null);
   const router = useRouter();
 
+  const loadTransactions = async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const currentUser = await authService.getCurrentUser();
+      if (!currentUser) { router.push('/login'); return; }
+      setUser(currentUser);
+      const data = await transactionService.getTransactions({ limit: 200 });
+      setTransactions(data);
+    } catch (e) {
+      setLoadError(getApiErrorMessage(e, 'Failed to load transactions'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const load = async () => {
-      try {
-        const currentUser = await authService.getCurrentUser();
-        if (!currentUser) { router.push('/login'); return; }
-        setUser(currentUser);
-        const data = await transactionService.getTransactions({ limit: 200 });
-        setTransactions(data);
-      } catch (e) {
-        console.error('Failed to load transactions:', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    loadTransactions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   const formatCurrency = (amount: number) => {
@@ -312,6 +319,17 @@ export default function TransactionsPage() {
 
   if (loading) {
     return <AppLoading label="Loading transactions…" />;
+  }
+
+  if (loadError) {
+    return (
+      <AppPage active="transactions">
+        <AppHeader title="Transactions" subtitle="Add cash entries or categorize bank transactions" />
+        <AppMain>
+          <AppErrorState message={loadError} onRetry={loadTransactions} />
+        </AppMain>
+      </AppPage>
+    );
   }
 
   const TABS: { key: FilterTab; label: string }[] = [
