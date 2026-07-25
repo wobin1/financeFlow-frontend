@@ -6,6 +6,7 @@ export interface User {
   email: string;
   full_name: string;
   is_active: boolean;
+  email_verified?: boolean;
   role?: string;
   plaid_access_token?: string;
   business_name?: string;
@@ -25,6 +26,11 @@ export interface RegisterData {
   email: string;
   full_name: string;
   password: string;
+}
+
+export interface AuthMessage {
+  message: string;
+  email_sent?: boolean;
 }
 
 const ACCESS_TOKEN_COOKIE = 'access_token';
@@ -63,6 +69,29 @@ export const authService = {
 
   async register(data: RegisterData): Promise<User> {
     const response = await api.post('/auth/register', data);
+    return response.data;
+  },
+
+  async verifyEmail(token: string): Promise<AuthMessage> {
+    const response = await api.post('/auth/verify-email', { token });
+    return response.data;
+  },
+
+  async resendVerification(email: string): Promise<AuthMessage> {
+    const response = await api.post('/auth/resend-verification', { email });
+    return response.data;
+  },
+
+  async forgotPassword(email: string): Promise<AuthMessage> {
+    const response = await api.post('/auth/forgot-password', { email });
+    return response.data;
+  },
+
+  async resetPassword(token: string, newPassword: string): Promise<AuthMessage> {
+    const response = await api.post('/auth/reset-password', {
+      token,
+      new_password: newPassword,
+    });
     return response.data;
   },
 

@@ -14,6 +14,7 @@ export default function RegisterPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [verifyEmailSent, setVerifyEmailSent] = useState(false);
   const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,18 +36,24 @@ export default function RegisterPage() {
     }
 
     try {
-      await authService.register({
+      const user = await authService.register({
         email: formData.email,
         full_name: formData.full_name,
         password: formData.password
       });
-      
-      // Auto-login after registration
+
+      // When email verification is required, the account starts unverified —
+      // ask the user to confirm their email instead of auto-logging in.
+      if (!user.email_verified) {
+        setVerifyEmailSent(true);
+        return;
+      }
+
       await authService.login({
         username: formData.email,
         password: formData.password
       });
-      
+
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Registration failed');
@@ -105,6 +112,27 @@ export default function RegisterPage() {
             <span className="font-bold text-gray-900">FinanceFlow</span>
           </div>
 
+          {verifyEmailSent ? (
+            <div className="text-center py-4">
+              <div className="w-14 h-14 rounded-2xl bg-lime-100 flex items-center justify-center mx-auto mb-5">
+                <svg className="w-7 h-7 text-[#1B3A2D]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Check your email</h1>
+              <p className="text-gray-500 text-sm mb-6">
+                We sent a verification link to <span className="font-semibold text-gray-700">{formData.email}</span>.
+                Click it to activate your account, then sign in.
+              </p>
+              <Link
+                href="/login"
+                className="inline-block w-full py-3 rounded-xl bg-[#1B3A2D] text-white font-semibold text-sm hover:bg-[#243f2f] transition-all"
+              >
+                Go to sign in
+              </Link>
+            </div>
+          ) : (
+          <>
           <h1 className="text-3xl font-bold text-gray-900 mb-1">Create your account</h1>
           <p className="text-gray-500 text-sm mb-8">Get started — it&apos;s completely free</p>
 
@@ -151,6 +179,8 @@ export default function RegisterPage() {
               ) : 'Create account'}
             </button>
           </form>
+          </>
+          )}
 
           <p className="mt-8 text-center text-sm text-gray-500">
             Already have an account?{' '}
