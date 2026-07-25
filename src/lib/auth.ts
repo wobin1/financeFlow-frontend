@@ -27,6 +27,21 @@ export interface RegisterData {
   password: string;
 }
 
+const ACCESS_TOKEN_COOKIE = 'access_token';
+
+function cookieOptions() {
+  // Match backend ACCESS_TOKEN_EXPIRE_MINUTES default (30).
+  const minutes = 30;
+  const secure =
+    typeof window !== 'undefined' && window.location.protocol === 'https:';
+  return {
+    expires: minutes / (60 * 24),
+    sameSite: 'strict' as const,
+    secure,
+    path: '/',
+  };
+}
+
 export const authService = {
   async login(credentials: LoginCredentials): Promise<{ user: User; token: string }> {
     const formData = new FormData();
@@ -35,16 +50,14 @@ export const authService = {
 
     const response = await api.post('/auth/login', formData);
     const { access_token } = response.data;
-    
-    // Store token
-    Cookies.set('access_token', access_token, { expires: 7 });
-    
-    // Get user info
+
+    Cookies.set(ACCESS_TOKEN_COOKIE, access_token, cookieOptions());
+
     const userResponse = await api.get('/auth/me');
-    
+
     return {
       user: userResponse.data,
-      token: access_token
+      token: access_token,
     };
   },
 
@@ -62,13 +75,18 @@ export const authService = {
     }
   },
 
-  logout() {
-    Cookies.remove('access_token');
+  async logout() {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      /* ignore network errors on logout */
+    }
+    Cookies.remove(ACCESS_TOKEN_COOKIE, { path: '/' });
     window.location.href = '/login';
   },
 
   isAuthenticated(): boolean {
-    return !!Cookies.get('access_token');
+    return !!Cookies.get(ACCESS_TOKEN_COOKIE);
   },
 
   isAdmin(user: User | null | undefined): boolean {

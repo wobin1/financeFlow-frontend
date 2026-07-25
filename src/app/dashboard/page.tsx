@@ -12,15 +12,21 @@ import {
   AppMain,
   AppPage,
   AppPanel,
+  AppErrorState,
   CurrencyBadge,
 } from '@/components/app/PageChrome';
 import { monoApiService } from '@/lib/mono';
-import { billingService, type SubscriptionInfo } from '@/lib/billing';export default function DashboardPage() {
+import { billingService, type SubscriptionInfo } from '@/lib/billing';
+import { getApiErrorMessage } from '@/lib/api';
+
+export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<TransactionSummary | null>(null);
   const [billing, setBilling] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [bankConnected, setBankConnected] = useState(false);
   const [showMonoConnect, setShowMonoConnect] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -29,56 +35,58 @@ import { billingService, type SubscriptionInfo } from '@/lib/billing';export def
   const carouselRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    const loadDashboard = async () => {
-      try {
-        const currentUser = await authService.getCurrentUser();
-        if (!currentUser) {
-          router.push('/login');
-          return;
-        }
-        
-        setUser(currentUser);
-        
-        // Load transactions, summary, and billing usage
-        const [transactionsData, summaryData, billingData] = await Promise.all([
-          transactionService.getTransactions({ limit: 10 }),
-          transactionService.getSummary(),
-          billingService.getSubscription().catch(() => null),
-        ]);
-        
-        setTransactions(transactionsData);
-        setSummary(summaryData);
-        setBilling(billingData);
-      } catch (error) {
-        console.error('Failed to load dashboard:', error);
-      } finally {
-        setLoading(false);
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const currentUser = await authService.getCurrentUser();
+      if (!currentUser) {
+        router.push('/login');
+        return;
       }
-    };
 
-    loadDashboard();
+      setUser(currentUser);
+
+      const [transactionsData, summaryData, billingData] = await Promise.all([
+        transactionService.getTransactions({ limit: 10 }),
+        transactionService.getSummary(),
+        billingService.getSubscription().catch(() => null),
+      ]);
+
+      setTransactions(transactionsData);
+      setSummary(summaryData);
+      setBilling(billingData);
+    } catch (error) {
+      setLoadError(getApiErrorMessage(error, 'Failed to load dashboard'));
+    } finally {
+      setLoading(false);
+    }
   }, [router]);
 
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
   const handleLogout = () => {
-    authService.logout();
+    void authService.logout();
   };
 
   const syncAndRefresh = async () => {
     setIsSyncing(true);
     setSyncResult(null);
+    setSyncError(null);
     try {
       const result = await monoApiService.syncTransactions();
       setSyncResult(result?.summary || result);
-      
+
       const [transactionsData, summaryData] = await Promise.all([
         transactionService.getTransactions({ limit: 10 }),
-        transactionService.getSummary()
+        transactionService.getSummary(),
       ]);
       setTransactions(transactionsData);
       setSummary(summaryData);
     } catch (error) {
-      console.error('Failed to sync transactions:', error);
+      setSyncError(getApiErrorMessage(error, 'Failed to sync transactions'));
     } finally {
       setIsSyncing(false);
     }
@@ -157,6 +165,17 @@ import { billingService, type SubscriptionInfo } from '@/lib/billing';export def
     return <AppLoading label="Loading dashboard…" />;
   }
 
+  if (loadError) {
+    return (
+      <AppPage active="dashboard">
+        <AppHeader title="Dashboard" subtitle="Your financial overview" />
+        <AppMain>
+          <AppErrorState message={loadError} onRetry={loadDashboard} />
+        </AppMain>
+      </AppPage>
+    );
+  }
+
   const isBankLinked = bankConnected || !!user?.plaid_access_token;
 
   const dashIcon = <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>;
@@ -193,6 +212,15 @@ import { billingService, type SubscriptionInfo } from '@/lib/billing';export def
         {syncResult && (
           <div className="mx-4 sm:mx-6 lg:mx-8 mt-3 px-4 py-2.5 rounded-xl bg-lime-50 border border-lime-200 text-sm text-lime-900 flex items-center gap-2">
             <span><strong>{syncResult.processed}</strong> imported · <strong>{syncResult.skipped}</strong> skipped</span>
+          </div>
+        )}
+
+        {syncError && (
+          <div className="mx-4 sm:mx-6 lg:mx-8 mt-3 px-4 py-2.5 rounded-xl bg-red-50 border border-red-200 text-sm text-red-900 flex items-center justify-between gap-2">
+            <span>{syncError}</span>
+            <button type="button" onClick={handleSyncTransactions} className="font-semibold underline">
+              Retry
+            </button>
           </div>
         )}
 

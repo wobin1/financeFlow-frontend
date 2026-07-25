@@ -136,6 +136,18 @@ export const transactionService = {
 
   async getSummary(): Promise<TransactionSummary> {
     const response = await api.get('/transactions/summary/dashboard');
-    return response.data;
+    const data = response.data;
+    // Backend returns { summary: {...}, categories, ... } — flatten for the dashboard.
+    if (data?.summary && typeof data.summary === 'object') {
+      return {
+        total_expenses: Number(data.summary.total_expenses ?? 0),
+        total_income: Number(data.summary.total_income ?? 0),
+        net_amount: Number(data.summary.net_amount ?? 0),
+        pending_count: Number(data.summary.pending_count ?? 0),
+        total_transactions: Number(data.summary.total_transactions ?? 0),
+        categories: data.categories ?? {},
+      };
+    }
+    return data;
   }
 };

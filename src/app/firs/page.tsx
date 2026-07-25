@@ -19,10 +19,12 @@ import {
   AppLabel,
   CurrencyBadge,
   AppLoading,
+  AppErrorState,
   fieldClassName,
 } from '@/components/app/PageChrome';
 import { Select } from '@/components/ui/Select';
 import { cn } from '@/lib/utils';
+import { getApiErrorMessage } from '@/lib/api';
 
 type TabKey = 'vat' | 'wht' | 'cit';
 
@@ -79,7 +81,7 @@ function WorksheetSection({ worksheet }: { worksheet: FirsWorksheet }) {
               <span className="text-lg font-bold text-[#162518] tabular-nums">
                 {typeof field.value === 'number'
                   ? field.value.toLocaleString('en-NG', { minimumFractionDigits: 2 })
-                  : field.value}
+                  : Number(field.value).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
               </span>
               <CopyButton value={field.value} />
             </div>
@@ -113,6 +115,8 @@ export default function FirsPage() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [savingProfile, setSavingProfile] = useState(false);
   const [upgradeRequired, setUpgradeRequired] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [profileForm, setProfileForm] = useState({
     business_name: '',
     tin_number: '',
@@ -122,14 +126,17 @@ export default function FirsPage() {
   const loadPrep = useCallback(async () => {
     setLoading(true);
     setUpgradeRequired(false);
+    setLoadError(null);
     try {
       const data = await firsService.getFilingPrep(year, month);
       setPrep(data);
     } catch (e: unknown) {
-      console.error('Failed to load FIRS prep:', e);
       const status = (e as { response?: { status?: number } })?.response?.status;
       if (status === 402) {
         setUpgradeRequired(true);
+        setPrep(null);
+      } else {
+        setLoadError(getApiErrorMessage(e, 'Failed to load FIRS prep'));
         setPrep(null);
       }
     } finally {
@@ -160,11 +167,12 @@ export default function FirsPage() {
 
   const handleSaveProfile = async () => {
     setSavingProfile(true);
+    setProfileError(null);
     try {
       await updateTaxProfile(profileForm);
       await loadPrep();
     } catch (e) {
-      console.error('Failed to save profile:', e);
+      setProfileError(getApiErrorMessage(e, 'Failed to save profile'));
     } finally {
       setSavingProfile(false);
     }
@@ -217,6 +225,16 @@ export default function FirsPage() {
               >
                 View plans
               </Link>
+            </div>
+          )}
+
+          {loadError && !upgradeRequired && (
+            <AppErrorState message={loadError} onRetry={loadPrep} />
+          )}
+
+          {profileError && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+              {profileError}
             </div>
           )}
 

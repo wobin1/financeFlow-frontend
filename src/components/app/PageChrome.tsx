@@ -135,3 +135,32 @@ export function AppLoading({ label }: { label: string }) {
     </div>
   );
 }
+
+export function AppErrorState({
+  title = 'Couldn’t load this page',
+  message,
+  onRetry,
+}: {
+  title?: string;
+  message: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <div className="min-h-[50vh] flex items-center justify-center px-4">
+      <div className="max-w-md w-full rounded-2xl border border-red-200 bg-red-50 p-5 text-center">
+        <p className="text-sm font-bold text-red-900">{title}</p>
+        <p className="mt-2 text-sm text-red-800">{message}</p>
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="mt-4 inline-flex items-center justify-center px-4 py-2 rounded-xl bg-[#162518] text-white text-sm font-semibold hover:bg-[#243f2f]"
+          >
+            Try again
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
