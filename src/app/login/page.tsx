@@ -11,6 +11,8 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -18,6 +20,8 @@ function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setNeedsVerification(false);
+    setResendState('idle');
     try {
       await authService.login({ username: email, password });
       const next = searchParams.get('next');
@@ -25,9 +29,24 @@ function LoginForm() {
         next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard';
       router.push(safeNext);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Invalid email or password');
+      const detail: string = err.response?.data?.detail || 'Invalid email or password';
+      setError(detail);
+      if (err.response?.status === 403 && /verify your email/i.test(detail)) {
+        setNeedsVerification(true);
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setResendState('sending');
+    try {
+      await authService.resendVerification(email);
+    } catch {
+      /* generic response — ignore */
+    } finally {
+      setResendState('sent');
     }
   };
 
@@ -89,7 +108,21 @@ function LoginForm() {
               <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
-              {error}
+              <div>
+                {error}
+                {needsVerification && (
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={resendState !== 'idle'}
+                    className="mt-2 block font-semibold text-red-800 underline disabled:no-underline disabled:opacity-70"
+                  >
+                    {resendState === 'idle' && 'Resend verification email'}
+                    {resendState === 'sending' && 'Sending…'}
+                    {resendState === 'sent' && 'Verification email sent — check your inbox'}
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -107,7 +140,12 @@ function LoginForm() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-semibold text-gray-700">Password</label>
+                <Link href="/forgot-password" className="text-sm font-semibold text-[#1B3A2D] hover:text-lime-700 transition-colors">
+                  Forgot password?
+                </Link>
+              </div>
               <input
                 type="password"
                 value={password}
